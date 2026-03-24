@@ -1,73 +1,34 @@
+<div align="center">
+
 # TinyCode
 
-**A minimal but complete Coding Agent Harness — built on [Pi](https://github.com/earendil-works/pi).**
+**A minimal but complete Coding Agent Harness — the readable way to learn how coding agents actually work.**
 
-```
-TinyCode
+[![CI](https://github.com/helsome/tinycode/actions/workflows/ci.yml/badge.svg)](https://github.com/helsome/tinycode/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522.19-brightgreen)](./package.json)
+[![Tests](https://img.shields.io/badge/tests-115%20passing-success)](./tests)
 
-Model + Agent Loop + Tools + Permissions + Session
-+ Context + Skills + MCP + Sub-Agents + TUI
-```
+Built on [Pi](https://github.com/earendil-works/pi) · TypeScript · ESM · ~6k lines, every one meant to be read.
 
-TinyCode is a learning project: read this repository and you can understand how a modern
-coding agent (Claude Code, Codex CLI, Pi, …) actually works. Every module is small,
-readable TypeScript with explicit boundaries.
-
-```bash
-npm install
-npm run build
-npm run dev          # full-screen terminal agent
-```
-
-Configure a provider with an environment variable (`ANTHROPIC_API_KEY`,
-`OPENAI_API_KEY`, `GROQ_API_KEY`, …) or try it offline:
-
-```bash
-TINYCODE_MODEL=mock npm run dev   # scripted mock model, no network, no key
-```
+</div>
 
 ---
 
-## What is a Coding Agent?
-
-A coding agent is an LLM placed in a loop with tools:
+Most coding agents are products: hundreds of thousands of lines, closed or sprawling, impossible
+to hold in your head. TinyCode is the opposite — a **complete agent harness you can finish
+reading in an afternoon**, with every subsystem a production agent has:
 
 ```
-User task
-   ↓  prompt
-Agent Runtime (Pi)  ⇄  Model (streaming LLM API)
-   ↓  "call read src/x.ts"          ← the model decides which tool to use
-Tool Execution (TinyCode)
-   ↓  file contents as tool result
-Agent Runtime  ⇄  Model              ← loop until the model stops calling tools
-   ↓
-Final Answer
+Model  +  Agent Loop  +  Tools  +  Permissions  +  Session
++  Context Engineering  +  Skills  +  MCP  +  Sub-Agents  +  TUI
 ```
 
-The **model** reasons and decides; the **harness** (everything in `src/`) provides
-tools, enforces rules, manages context, and renders the experience. Neither trusts
-the other blindly:
+It runs real tasks against real LLM providers — and because it is built on
+[Pi](https://github.com/earendil-works/pi)'s runtime (`pi-agent-core`, `pi-ai`, `pi-tui`),
+none of the code is scaffolding theater. The loop streams, tools execute, sessions persist.
 
-- The model cannot touch your machine — only registered tools run.
-- Tools cannot run unchecked — every call passes the permission layer.
-- Nothing is unbounded — tool output is truncated and old context is compacted.
-
-## Why Pi?
-
-[Pi](https://github.com/earendil-works/pi) provides the hard runtime parts so TinyCode
-can focus on harness logic:
-
-| From Pi | What it does |
-|---|---|
-| `@earendil-works/pi-agent-core` | `Agent` class: the loop, tool-call dispatch, streaming events, abort |
-| `@earendil-works/pi-ai` | Provider catalog (`builtinModels`), auth from env vars, typed streaming, schema validation |
-| `@earendil-works/pi-tui` | Alt-screen terminal UI: diff rendering, editor, scroll view, overlays |
-
-What TinyCode builds itself: tools, permissions, sessions, context policy, skills,
-MCP integration, sub-agents, TUI composition, configuration, CLI. See
-[ARCHITECTURE.md](./ARCHITECTURE.md) for the exact split and how each piece works.
-
-## Feature tour
+## Demo
 
 ```text
 $ tinycode
@@ -96,85 +57,129 @@ $ tinycode
 └──────────────────────────────────────────────────────────┘
 ```
 
-- **Streaming** — model output renders token-by-token; tool calls show live status.
-- **7 built-in tools** — `read`, `write`, `edit`, `bash`, `grep`, `find`, `ls`, plus
-  `load_skill` and sub-agent tools, all through one registry.
-- **Permissions** — read-only work inside the project runs freely; writes, installs and
-  dangerous shell commands trigger a dialog (*Allow once / Always allow this pattern / Deny*).
-  `--permission-mode auto` approves asks automatically for CI.
-- **Sessions** — JSONL persistence under `~/.tinycode/sessions`; resume with
-  `tinycode --continue` or `--session <id>`, or `/resume` inside the app.
-- **Context engineering** — oversized tool results are truncated head+tail with the full
-  output saved as an artifact; above a token budget older turns are summarized into a
-  `<conversation-summary>` message (`/compact` to force it).
-- **Project memory** — `TINY.md` in the repo root is injected into the system prompt
-  (`AGENTS.md`/`CLAUDE.md` are also honored).
-- **Skills** — `.tinycode/skills/<name>/SKILL.md` folders with frontmatter; only names and
-  descriptions enter the prompt, bodies load on demand via `load_skill`.
-- **MCP** — stdio servers configured in `.tinycode/config.json` connect at startup and their
-  tools merge into the same registry; `/mcp` shows status.
-- **Sub-agents** — the root agent can spawn up to 3 read-only workers with independent
-  contexts (`spawn_agent`/`wait_agent`/`list_agents`/`close_agent`); the status bar shows
-  `SUB-AGENTS n/3 RUNNING`.
+## How it compares
+
+TinyCode does not compete with production agents on features — it competes on
+**being understandable**. If you have ever wanted to know what happens between your
+prompt and `rm -rf`, this table is for you.
+
+| Project | Language | Source | Positioning | Readable as a first agent? |
+|---|---|---|---|---|
+| **TinyCode** | TypeScript | MIT | Complete learning harness | ✅ ~6k lines, guided tour in README + ARCHITECTURE |
+| Claude Code | TypeScript* | ✗ proprietary | Production agent product | ✗ |
+| OpenAI Codex CLI | Rust | OSS | Production agent CLI | ⚠️ large |
+| OpenCode | TS + Go | OSS | Production agent IDE/CLI | ⚠️ multi-process |
+| Gemini CLI | TypeScript | Apache-2.0 | Production agent CLI | ⚠️ large |
+| Aider | Python | Apache-2.0 | AI pair programmer (git-centric) | ⚠️ different architecture |
+| pi coding-agent | TypeScript | OSS | Full-featured agent + SDK on Pi | ✅ great next step after TinyCode |
+| MiniCode | TypeScript | OSS | Educational mini agent | ✅ similar spirit |
+
+<sub>* Claude Code ships minified; internals are inferred from behavior.</sub>
+
+**What TinyCode has that most tutorials don't:** permissions with a real approval dialog,
+resumable JSONL sessions, context compaction, progressive-disclosure skills, live MCP
+integration, supervised read-only sub-agents — all wired to a streaming TUI, all tested
+offline against a scripted model.
+
+## Quick start
+
+```bash
+git clone https://github.com/helsome/tinycode.git
+cd tinycode && npm install && npm run build
+```
+
+```bash
+npm run dev                                  # full-screen terminal agent (needs a provider key)
+ANTHROPIC_API_KEY=sk-… npm run dev           # e.g. Anthropic — keys come from env only
+TINYCODE_MODEL=mock npm run dev              # offline: scripted mock model, zero setup
+tinycode -p "describe this project"          # one-shot non-interactive mode
+```
+
+Supported providers include Anthropic, OpenAI, Groq, DeepSeek, Mistral, OpenRouter,
+Google and [more](https://github.com/earendil-works/pi) — everything Pi's catalog covers.
+
+## Features
+
+- **7 built-in tools** — `read` (windowed, line-numbered), `write`, `edit` (exact-match with
+  diff preview), `bash` (timeout, abort, output capping), `grep`, `find`, `ls` — plus
+  `load_skill` and four sub-agent tools through one registry.
+- **Streaming TUI** — tokens render live; tool calls show `● bash npm test → ✓ exit 0 · 2.4s`;
+  edits show `+12 -3` diffs.
+- **Permissions** — reads inside the project flow freely; writes, installs and dangerous shell
+  commands open an approval dialog (*Allow once / Always allow this pattern / Deny*).
+  A heuristic classifier routes `npm test` vs `rm -rf` vs `curl … | sh`.
+- **Sessions** — append-only JSONL under `~/.tinycode/sessions`; resume with `--continue`,
+  `--session <id>` or `/resume`. Crash-tolerant by design.
+- **Context engineering** — oversized tool results truncate head+tail with full output saved
+  as artifacts; past a token budget, old turns compact into a `<conversation-summary>`
+  while recent messages stay verbatim.
+- **Project memory** — `TINY.md` in the repo root joins the system prompt
+  (`AGENTS.md`/`CLAUDE.md` honored too).
+- **Skills** — `.tinycode/skills/<name>/SKILL.md`; only names/descriptions enter the prompt,
+  bodies load on demand via `load_skill`.
+- **MCP** — stdio servers from `.tinycode/config.json` connect at startup; their tools merge
+  into the same registry. One broken server never takes the app down.
+- **Sub-agents** — up to 3 read-only workers with independent contexts and aborts;
+  `spawn_agent` / `wait_agent` / `list_agents` / `close_agent`.
 - **Slash commands** — `/help /new /clear /resume /sessions /model /skills /mcp /agents
   /compact /status /exit`.
 
-## Non-interactive mode
-
-```bash
-tinycode -p "describe this project"
-tinycode -p "fix the failing test" --permission-mode auto --model anthropic/claude-sonnet-4
-```
-
-Prints the final answer and exits — the same harness, no UI.
-
 ## Configuration
 
-`.tinycode/config.json` (project) — all keys optional:
+`.tinycode/config.json` (all keys optional):
 
 ```json
 {
   "provider": "anthropic",
   "model": "claude-sonnet-4",
   "permissionMode": "ask",
-  "context": {
-    "compactAboveTokens": 80000,
-    "keepRecentMessages": 12,
-    "maxToolResultChars": 30000
-  },
+  "context": { "compactAboveTokens": 80000, "keepRecentMessages": 12 },
   "mcpServers": {
     "example": { "command": "node", "args": ["server.js"] }
   }
 }
 ```
 
-Environment: `ANTHROPIC_API_KEY` & co. (never put keys in files), `TINYCODE_MODEL`
-(`provider/model` or `mock`), `TINYCODE_PERMISSION_MODE=ask|auto`,
-`TINYCODE_HOME` (redirect data dir — used by the test suite).
+Environment: provider API keys, `TINYCODE_MODEL=provider/model` (or `mock`),
+`TINYCODE_PERMISSION_MODE=ask|auto`, `TINYCODE_HOME` (data-dir redirect used by tests).
+
+## Documentation
+
+| Doc | Contents |
+|---|---|
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | The map: modules, data flow, what comes from Pi vs TinyCode |
+| `src/agent/runtime.ts` | Start here — how the Pi `Agent` gets its policies (~100 lines) |
+| `tests/harness.e2e.test.ts` | The whole story as one executable scenario |
 
 ## Testing
 
+Fully offline — no API key needed, ever:
+
 ```bash
-npm test            # 115 tests across 11 files
-npm run typecheck
-npm run lint
-npm run build
+npm test            # 115 tests: unit, integration, E2E harness, TUI, CLI smoke
+npm run typecheck   # strict TypeScript
+npm run lint        # eslint
+npm run build       # tsc → dist/
 ```
 
-The suite runs fully offline. A scripted **mock model** drives the real agent loop:
-the E2E test fixes a deliberately broken fixture project via
-`bash → read → edit → bash → final` and asserts the fixture's tests pass.
-An MCP integration test spawns a real stdio server from `fixtures/mock-mcp/`.
+The flagship test scripts a deterministic mock model that drives the **real** agent loop
+through `bash → read → edit → bash → final` to fix a deliberately broken fixture project,
+then asserts the fixture's tests pass and the session file is complete. An MCP integration
+test spawns a genuine stdio server process. CI runs the same gates on Node 22 and 24.
 
-## Learn more
+## Contributing
 
-Read in this order:
+Issues and PRs welcome. The bar for new code is the one the project already sets:
+small modules, explicit boundaries, tests that run without network access.
+If a feature needs more than ~300 lines to explain, it probably belongs in a layer below.
 
-1. [ARCHITECTURE.md](./ARCHITECTURE.md) — the map: modules, data flow, design decisions.
-2. `src/agent/runtime.ts` — how the Pi `Agent` gets wired to harness policies (~100 lines).
-3. `src/tools/read.ts` … — each tool is one self-contained file.
-4. `tests/harness.e2e.test.ts` — the whole story in one executable scenario.
+## Acknowledgements
+
+- [Pi](https://github.com/earendil-works/pi) by Earendil — runtime foundation and the best
+  reference implementation of a modern coding agent.
+- [MiniCode](https://github.com/LiuMengxuan04/MiniCode) — inspiration for the
+  *learn-by-building-a-harness* format.
 
 ## License
 
-MIT
+[MIT](./LICENSE)

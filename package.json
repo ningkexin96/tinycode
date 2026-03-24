@@ -1,7 +1,7 @@
 {
   "name": "tinycode",
   "version": "1.0.0",
-  "description": "TinyCode — a minimal but complete Coding Agent Harness built on Pi",
+  "description": "A minimal but complete Coding Agent Harness — learn how coding agents work by reading one",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -35,5 +35,23 @@
   },
   "allowScripts": {
     "esbuild@0.28.2": true
-  }
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "coding-agent",
+    "cli",
+    "llm",
+    "tui",
+    "mcp",
+    "education"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/helsome/tinycode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/helsome/tinycode/issues"
+  },
+  "homepage": "https://github.com/helsome/tinycode#readme"
 }
