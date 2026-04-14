@@ -128,10 +128,16 @@ describe("slash commands", () => {
 });
 
 describe("CLI smoke (built dist)", () => {
-  const cli = path.resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    "../dist/cli/index.js",
-  );
+  const projectRootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const cli = path.join(projectRootDir, "dist", "cli", "index.js");
+
+  // `npm test` must work on a fresh clone without a prior `npm run build`.
+  beforeAll(() => {
+    if (!fs.existsSync(cli)) {
+      execFileSync("npx", ["tsc", "-p", "tsconfig.build.json"], { cwd: projectRootDir, stdio: "pipe" });
+    }
+    expect(fs.existsSync(cli)).toBe(true);
+  });
 
   function run(args: string[], opts: { cwd?: string; env?: Record<string, string> } = {}): string {
     return execFileSync(process.execPath, [cli, ...args], {

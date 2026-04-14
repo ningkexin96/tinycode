@@ -32,11 +32,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Unit & integration tests (offline, mock model)
-        run: npm test
-
       - name: Build
         run: npm run build
+
+      - name: Unit & integration tests (offline, mock model)
+        run: npm test
 
       - name: CLI smoke
         run: |
