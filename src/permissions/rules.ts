@@ -41,6 +41,26 @@ export function resolveToolPath(
 
 const READ_ONLY_TOOLS = new Set(["read", "grep", "find", "ls"]);
 
+/**
+ * Hard DENY for catastrophic shell commands. These are refused outright —
+ * auto mode, remembered patterns, and user approval never override them.
+ * Deliberately tiny: only commands whose damage is unrecoverable.
+ */
+const HARD_DENY_BASH: Array<{ label: string; test: RegExp }> = [
+  { label: "recursive force-delete of filesystem root", test: /\brm\s+[^\n]*\s\/\*?\s*(?:&&|$|;)/ },
+  { label: "delete home directory", test: /\brm\s+[^\n]*\s(~|\$HOME)(?:\s|$)/ },
+  { label: "format filesystem", test: /\bmkfs(\.\w+)?\b/ },
+  { label: "raw disk write", test: /\bdd\b[^\n]*\bof=\/dev\/(disk|sd|nvme|mmcblk)/ },
+  { label: "world-writable root", test: /\bchmod\s+-R\s+777\s+\// },
+];
+
+export function findHardDeny(command: string): string | undefined {
+  for (const rule of HARD_DENY_BASH) {
+    if (rule.test.test(command)) return rule.label;
+  }
+  return undefined;
+}
+
 export function evaluateRules({
   toolName,
   input,
@@ -63,6 +83,10 @@ export function evaluateRules({
 
   if (toolName === "bash") {
     const command = String(input.command ?? "");
+    const denied = findHardDeny(command);
+    if (denied) {
+      return { action: "deny", reason: `catastrophic command refused: ${denied}` };
+    }
     const { insideProject } = resolveToolPath(
       projectRoot,
       typeof input.cwd === "string" ? input.cwd : undefined,

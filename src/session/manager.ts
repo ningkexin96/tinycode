@@ -30,8 +30,14 @@ export class SessionManager {
     return this.currentId;
   }
 
-  /** Attach to an existing session (used by --continue / --session). */
-  attach(id: string, cwd: string, model: string): { messages: AgentMessage[] } {
+  /**
+   * Attach to an existing session (used by --continue / --session / /resume).
+   *
+   * The file is left untouched — attach is read-only. Rewriting the header
+   * plus full history here would risk truncating the session if the process
+   * died between truncate and re-append; the stored header stays canonical.
+   */
+  attach(id: string, _cwd: string, _model: string): { messages: AgentMessage[] } {
     const loaded = this.storage.load(id);
     if (!loaded) throw new Error(`Session not found: ${id}`);
     this.currentId = id;
@@ -39,18 +45,7 @@ export class SessionManager {
     if (firstUser && firstUser.role === "user" && typeof firstUser.content === "string") {
       this.lastUserText = firstUser.content.replace(/\s+/g, " ").slice(0, 80);
     }
-    // Rewrite the file: refreshed header (model may have changed) + full history.
-    this.storage.create({
-      id,
-      cwd,
-      createdAt: loaded.header.createdAt,
-      model,
-      title: loaded.header.title ?? this.lastUserText,
-    });
-    for (const message of loaded.messages) {
-      this.storage.appendMessage(id, message);
-    }
-    this.meta = { cwd, model, createdAt: loaded.header.createdAt, titleSet: true };
+    this.meta = { cwd: loaded.header.cwd, model: loaded.header.model, createdAt: loaded.header.createdAt, titleSet: true };
     return { messages: loaded.messages };
   }
 

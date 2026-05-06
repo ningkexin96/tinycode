@@ -1,7 +1,7 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
 import { spawn } from "node:child_process";
-import { requirePathInsideProject } from "./paths.js";
+import { resolveWorkspacePath } from "./paths.js";
 
 const MAX_CAPTURE_CHARS = 100_000;
 const DEFAULT_TIMEOUT_MS = 120_000;
@@ -73,7 +73,7 @@ export function createBashTool(projectRoot: string): AgentTool<typeof bashSchema
       "Dangerous commands require user approval. Use for builds, tests and git inspection.",
     parameters: bashSchema,
     execute: async (_toolCallId, params, signal) => {
-      const cwdAbsolute = requirePathInsideProject(projectRoot, params.cwd ?? ".");
+      const cwdAbsolute = resolveWorkspacePath(projectRoot, params.cwd ?? ".");
       const timeoutMs = Math.min(Math.max(1, params.timeoutMs ?? DEFAULT_TIMEOUT_MS), MAX_TIMEOUT_MS);
 
       const stdout = new Capture(MAX_CAPTURE_CHARS);

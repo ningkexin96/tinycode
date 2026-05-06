@@ -1,7 +1,7 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
 import fs from "node:fs";
-import { displayPath, requirePathInsideProject } from "./paths.js";
+import { displayPath, resolveWorkspacePath } from "./paths.js";
 
 const DEFAULT_LIMIT = 2000;
 const MAX_LINE_CHARS = 2000;
@@ -41,7 +41,7 @@ export function createReadTool(projectRoot: string): AgentTool<typeof readSchema
       "the result states whether more lines remain.",
     parameters: readSchema,
     execute: async (_toolCallId, params) => {
-      const absolute = requirePathInsideProject(projectRoot, params.path);
+      const absolute = resolveWorkspacePath(projectRoot, params.path);
 
       let stat;
       try {

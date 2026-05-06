@@ -315,16 +315,7 @@ export class TuiApp implements SlashContext {
 
   private handleGlobalKeys(data: string): { consume?: boolean } | undefined {
     if (matchesKey(data, "ctrl+c")) {
-      if (this.runtimeImport.busy) {
-        this.runtimeImport.abort();
-        this.transcript.addInfo("Interrupted.");
-      } else if (Date.now() - this.lastCtrlCAt < 2000) {
-        this.requestExit();
-        void this.teardown();
-      } else {
-        this.lastCtrlCAt = Date.now();
-        this.transcript.addInfo(dim("(press Ctrl+C again to exit)"));
-      }
+      this.handleInterrupt();
       return { consume: true };
     }
     if (matchesKey(data, "ctrl+d")) {
@@ -339,7 +330,27 @@ export class TuiApp implements SlashContext {
     }
     return undefined;
   }
+
+  /**
+   * Shared Ctrl+C / SIGINT behavior: abort a busy run, otherwise require a
+   * second press within two seconds to quit. Terminals with ISIG deliver
+   * Ctrl+C as SIGINT rather than a byte, so both paths must agree.
+   */
+  handleInterrupt(): void {
+    if (this.runtimeImport.busy) {
+      this.runtimeImport.abort();
+      this.transcript.addInfo("Interrupted.");
+    } else if (Date.now() - this.lastCtrlCAt < 2000) {
+      this.requestExit();
+      void this.teardown();
+    } else {
+      this.lastCtrlCAt = Date.now();
+      this.transcript.addInfo(dim("(press Ctrl+C again to exit)"));
+    }
+    this.tui.requestRender();
+  }
 }
+
 
 /** Renders a loader row only while the agent is streaming. */
 class LoaderHost extends Text {

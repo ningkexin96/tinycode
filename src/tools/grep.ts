@@ -1,7 +1,7 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
 import fs from "node:fs";
-import { displayPath, requirePathInsideProject } from "./paths.js";
+import { displayPath, resolveWorkspacePath } from "./paths.js";
 import { walkFiles, globToRegExpSource } from "./walk.js";
 
 const DEFAULT_MAX_RESULTS = 100;
@@ -50,7 +50,7 @@ export function createGrepTool(projectRoot: string): AgentTool<typeof grepSchema
         throw new Error(`Invalid regular expression "${params.pattern}": ${(error as Error).message}`);
       }
       const matcher = compileGlob(params.include ?? "*");
-      const root = requirePathInsideProject(projectRoot, params.path ?? ".");
+      const root = resolveWorkspacePath(projectRoot, params.path ?? ".");
       let isFile = false;
       try {
         isFile = fs.statSync(root).isFile();

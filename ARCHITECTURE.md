@@ -84,7 +84,12 @@ uniform surface.
 | `find` | glob (`**` crosses dirs), sorted relative paths |
 | `ls` | type markers + sizes, dirs first |
 
-All path-taking tools enforce the project boundary (`requirePathInsideProject`) before any I/O.
+All path-taking tools enforce the project boundary through `resolveWorkspacePath`
+(src/tools/paths.ts) before any I/O: the lexical path is resolved, then **canonicalized with
+`fs.realpathSync` on both sides** (existing target — or nearest existing ancestor for new
+files — versus canonical project root). Symlink escapes (`link -> /etc/hosts`, writing through
+a symlinked directory, broken symlinks) are rejected with a model-friendly
+`Path resolves outside project directory: …` error while ordinary relative paths keep working.
 
 ## 4. Tool execution flow
 
@@ -116,10 +121,22 @@ Three layers (src/permissions):
    Unknown verbs are treated as `write`.
 2. **rules.ts** — per-tool defaults: reads inside the project → ALLOW; writes anywhere and
    reads outside → ASK; bash routes through the classifier; unknown tools → ASK.
-3. **manager.ts** — the runtime gate. ASK verdicts consult session-scoped "always allow"
-   patterns (e.g. `bash: npm install …` family), then `mode` (`auto` approves everything),
-   then the host's prompt callback. No callback ⇒ safe deny. The TUI dialog offers
-   *Allow once / Always allow this pattern / Deny*.
+3. **manager.ts** — the runtime gate. Order of evaluation:
+
+```
+hard DENY rule (catastrophic shell: rm -rf /, mkfs, raw disk write, …)
+  → refused unconditionally; auto mode and dialogs can never override it
+ALLOW verdict → run
+ASK verdict   → remembered "always allow" pattern?
+                → mode === "auto"?            approved
+                → prompt callback available?  dialog decides
+                → otherwise                   safe DENY
+```
+
+Semantics differ by surface: the TUI shows the dialog (*Allow once / Always allow this
+pattern / Deny*); headless `-p` has no dialog, so its default is deny-on-ASK and automation
+requires the explicit `--permission-mode auto` opt-in. SIGINT and the Ctrl+C binding share
+the same interrupt logic so ISIG terminals behave identically.
 
 ## 6. Context engineering
 
@@ -138,6 +155,12 @@ Three layers (src/permissions):
 
 ## 7. Session
 
+Every interactive launch owns a session from message one: plain `tinycode` maps to
+`{mode:"new"}`, `--continue` attaches the newest session whose stored cwd matches (never
+another project's; falls back to a new session with a note when none matches), `--session <id>`
+attaches exactly that id. `/new` rotates the id and clears the live transcript — Pi's
+`Agent.reset()` preserves systemPrompt/model/tools/hooks, so tool calling continues seamlessly.
+
 One JSONL file per session in `<dataHome>/sessions/<id>.jsonl` (id = UUIDv7):
 
 ```jsonl
@@ -147,11 +170,11 @@ One JSONL file per session in `<dataHome>/sessions/<id>.jsonl` (id = UUIDv7):
 {"type":"message","message":{ …toolResult… }}
 ```
 
-Writes are synchronous appends; a torn final line (crash mid-append) is skipped on load.
-The header is rewritten once when the first real prompt lands so `/sessions` shows titles.
-`--continue` attaches the newest session for the cwd; `--session <id>` any other; attach
-restores the transcript verbatim into the live `Agent`. Tests redirect storage via
-`TINYCODE_HOME`.
+Writes are synchronous appends — files are never truncated after creation (the first real
+prompt adds the title by rewriting the not-yet-valuable header line only). `attach()` is
+strictly read-only: it restores the transcript into the live `Agent` and keeps appending to
+the same file, so a crash during resume cannot destroy history. A torn final line (crash
+mid-append) is skipped on load. Tests redirect storage via `TINYCODE_HOME`.
 
 ## 8. Skills
 

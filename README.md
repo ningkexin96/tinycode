@@ -92,8 +92,13 @@ cd tinycode && npm install && npm run build
 npm run dev                                  # full-screen terminal agent (needs a provider key)
 ANTHROPIC_API_KEY=sk-… npm run dev           # e.g. Anthropic — keys come from env only
 TINYCODE_MODEL=mock npm run dev              # offline: scripted mock model, zero setup
-tinycode -p "describe this project"          # one-shot non-interactive mode
+tinycode -p "describe this project"          # one-shot mode (read-only by default)
+tinycode -p "refactor x" --permission-mode auto   # explicit opt-in to unattended writes
 ```
+
+> **Non-interactive safety:** `-p` runs headless — there is no approval dialog. ASK-level
+> operations are therefore **denied** unless you explicitly pass `--permission-mode auto`
+> (or set `TINYCODE_PERMISSION_MODE=auto`). Read-only commands run normally.
 
 Supported providers include Anthropic, OpenAI, Groq, DeepSeek, Mistral, OpenRouter,
 Google and [more](https://github.com/earendil-works/pi) — everything Pi's catalog covers.
@@ -108,8 +113,9 @@ Google and [more](https://github.com/earendil-works/pi) — everything Pi's cata
 - **Permissions** — reads inside the project flow freely; writes, installs and dangerous shell
   commands open an approval dialog (*Allow once / Always allow this pattern / Deny*).
   A heuristic classifier routes `npm test` vs `rm -rf` vs `curl … | sh`.
-- **Sessions** — append-only JSONL under `~/.tinycode/sessions`; resume with `--continue`,
-  `--session <id>` or `/resume`. Crash-tolerant by design.
+- **Sessions** — every interactive launch owns a live session (append-only JSONL under
+  `~/.tinycode/sessions`). Resume with `--continue` (newest session *of the current
+  directory only*), `--session <id>` or `/resume`; `/new` starts fresh at any time.
 - **Context engineering** — oversized tool results truncate head+tail with full output saved
   as artifacts; past a token budget, old turns compact into a `<conversation-summary>`
   while recent messages stay verbatim.
@@ -142,6 +148,16 @@ Google and [more](https://github.com/earendil-works/pi) — everything Pi's cata
 
 Environment: provider API keys, `TINYCODE_MODEL=provider/model` (or `mock`),
 `TINYCODE_PERMISSION_MODE=ask|auto`, `TINYCODE_HOME` (data-dir redirect used by tests).
+
+## Security notes
+
+TinyCode's permission system is an **approval layer + workspace path guard, not an OS sandbox**:
+
+- File tools enforce the project boundary with symlink-aware canonicalization (`realpath`
+  both sides), so `link -> /etc/hosts` cannot be used to escape the workspace.
+- Shell commands pass a risk classifier plus the same approval flow; they are not confined —
+  an approved `bash` call can do anything your user can.
+- Running genuinely untrusted code/tasks requires an external sandbox (container, VM).
 
 ## Documentation
 

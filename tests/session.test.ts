@@ -79,22 +79,26 @@ describe("SessionManager", () => {
     expect(loaded.header.title).toBe("fix the bug");
   });
 
-  it("attach restores the transcript and refreshes the header", () => {
+  it("attach restores the transcript without touching the file", () => {
     const writer = new SessionManager(dir);
     const id = writer.start("/proj", "old/model");
     writer.record(userMessage("task one"));
     writer.record(assistantMessage("worked"));
+    const before = fs.readFileSync(path.join(dir, `${id}.jsonl`), "utf8");
 
     const reader = new SessionManager(dir);
     const restored = reader.attach(id, "/proj", "new/model");
     expect(restored.messages).toHaveLength(2);
 
-    // Header rewritten with new model; original messages preserved once.
-    const raw = fs.readFileSync(path.join(dir, `${id}.jsonl`), "utf8").trim().split("\n");
-    expect(JSON.parse(raw[0]!).model).toBe("new/model");
-    const records = raw.map((line) => JSON.parse(line));
-    expect(records.filter((r) => r.type === "message")).toHaveLength(2);
-    expect(records.filter((r) => r.type === "message" && JSON.stringify(r.message).includes("task one"))).toHaveLength(1);
+    // Append-only guarantee: attach must not truncate or rewrite history,
+    // so a crash during attach can never destroy a session.
+    const after = fs.readFileSync(path.join(dir, `${id}.jsonl`), "utf8");
+    expect(after).toBe(before);
+
+    // New records keep appending to the attached file.
+    reader.record(userMessage("post-attach"));
+    const lines = after.trim().split("\n").length;
+    expect(fs.readFileSync(path.join(dir, `${id}.jsonl`), "utf8").trim().split("\n")).toHaveLength(lines + 1);
   });
 
   it("record survives storage failures without throwing", () => {

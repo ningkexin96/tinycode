@@ -1,6 +1,6 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
-import { requirePathInsideProject } from "./paths.js";
+import { resolveWorkspacePath } from "./paths.js";
 import { walkFiles, globToRegExpSource } from "./walk.js";
 
 const DEFAULT_MAX_RESULTS = 500;
@@ -28,7 +28,7 @@ export function createFindTool(projectRoot: string): AgentTool<typeof findSchema
       'Find files by glob pattern, e.g. "src/**/*.ts" or "*.test.ts". Returns relative paths sorted alphabetically.',
     parameters: findSchema,
     execute: async (_toolCallId, params) => {
-      const root = requirePathInsideProject(projectRoot, params.path ?? ".");
+      const root = resolveWorkspacePath(projectRoot, params.path ?? ".");
       const regex = new RegExp(`^${globToRegExpSource(params.pattern)}$`);
       const basenameFallback = new RegExp(
         `^${globToRegExpSource(params.pattern.split("/").pop() ?? "*")}$`,

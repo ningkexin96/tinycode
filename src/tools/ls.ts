@@ -2,7 +2,7 @@ import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
 import fs from "node:fs";
 import path from "node:path";
-import { displayPath, requirePathInsideProject } from "./paths.js";
+import { displayPath, resolveWorkspacePath } from "./paths.js";
 
 const MAX_ENTRIES = 500;
 
@@ -35,7 +35,7 @@ export function createLsTool(projectRoot: string): AgentTool<typeof lsSchema> {
       "Hidden entries require `all: true`.",
     parameters: lsSchema,
     execute: async (_toolCallId, params) => {
-      const absolute = requirePathInsideProject(projectRoot, params.path ?? ".");
+      const absolute = resolveWorkspacePath(projectRoot, params.path ?? ".");
       let dirents: fs.Dirent[];
       try {
         dirents = fs.readdirSync(absolute, { withFileTypes: true });

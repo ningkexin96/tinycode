@@ -64,7 +64,8 @@ describe("rule evaluation", () => {
   it("routes bash by classifier risk", () => {
     expect(evaluateRules({ toolName: "bash", input: { command: "npm test" }, projectRoot: root }).action).toBe("allow");
     expect(evaluateRules({ toolName: "bash", input: { command: "npm i foo" }, projectRoot: root }).action).toBe("ask");
-    expect(evaluateRules({ toolName: "bash", input: { command: "rm -rf /" }, projectRoot: root }).action).toBe("ask");
+    // Catastrophic commands are hard-denied, never merely asked.
+    expect(evaluateRules({ toolName: "bash", input: { command: "rm -rf /" }, projectRoot: root }).action).toBe("deny");
   });
 
   it("defaults unknown tools to ask", () => {

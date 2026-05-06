@@ -2,8 +2,7 @@ import fs from "node:fs";
 import { buildHarnessFromCli, printHelp, printVersion, reportError } from "./commands.js";
 import { CliArgsError, parseArgs } from "./args.js";
 import { TuiApp } from "../tui/app.js";
-import { sessionsDir } from "../config/loader.js";
-import { SessionManager } from "../session/manager.js";
+import { resolveInteractiveSession, type SessionOption } from "./sessions.js";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 
 async function main(): Promise<number> {
@@ -42,13 +41,9 @@ async function main(): Promise<number> {
     return runPrintMode(cwd, args.prompt, args);
   }
 
-  // Interactive TUI.
+  // Interactive TUI — always owns a session (new or attached).
   try {
-    const session = args.continueLast
-      ? await resolveLatestSession(cwd)
-      : args.sessionId
-        ? ({ mode: "attach", id: args.sessionId } as const)
-        : undefined;
+    const session: SessionOption = resolveInteractiveSession(args, cwd);
     const harness = await buildHarnessFromCli({
       cwd,
       modelFlag: args.model,
@@ -65,7 +60,15 @@ async function main(): Promise<number> {
       subAgents: harness.subAgents,
       projectRoot: cwd,
     });
-    await app.run();
+    // Real terminals with ISIG deliver Ctrl+C as SIGINT; route it through the
+    // same interrupt logic as the in-app keybinding.
+    const onSigint = () => app.handleInterrupt();
+    process.on("SIGINT", onSigint);
+    try {
+      await app.run();
+    } finally {
+      process.off("SIGINT", onSigint);
+    }
     await harness.shutdown();
     return 0;
   } catch (error) {
@@ -80,15 +83,17 @@ async function runPrintMode(
   args: ReturnType<typeof parseArgs>,
 ): Promise<number> {
   try {
-    const session = args.continueLast
-      ? await resolveLatestSession(cwd)
+    // Headless runs persist only when explicitly resuming; ASK verdicts deny
+    // because there is no dialog — auto-approval requires an explicit opt-in.
+    const session: SessionOption | undefined = args.continueLast
+      ? resolveInteractiveSession(args, cwd)
       : args.sessionId
-        ? ({ mode: "attach", id: args.sessionId } as const)
+        ? { mode: "attach", id: args.sessionId }
         : undefined;
     const harness = await buildHarnessFromCli({
       cwd,
       modelFlag: args.model,
-      permissionMode: args.permissionMode ?? "auto",
+      permissionMode: args.permissionMode ?? "ask",
       mock: args.mock,
       session,
     });
@@ -122,19 +127,6 @@ function extractFinalText(messages: readonly AgentMessage[]): string {
     if (text.length > 0) return text;
   }
   return "";
-}
-
-/** Resolve the most recent session for --continue. */
-async function resolveLatestSession(
-  cwd: string,
-): Promise<{ mode: "attach"; id: string } | undefined> {
-  const manager = new SessionManager(sessionsDir());
-  const latest = manager.list().find((session) => session.cwd === cwd);
-  if (!latest) {
-    process.stderr.write("tinycode: no previous session to continue.\n");
-    process.exit(2);
-  }
-  return { mode: "attach", id: latest.id };
 }
 
 /** --list-models: show models whose providers have credentials configured. */

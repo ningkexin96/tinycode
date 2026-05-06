@@ -3,7 +3,7 @@ import { Type } from "@earendil-works/pi-ai";
 import fs from "node:fs";
 import path from "node:path";
 import { diffStats, lineDiff } from "./diff.js";
-import { displayPath, requirePathInsideProject } from "./paths.js";
+import { displayPath, resolveWorkspacePath } from "./paths.js";
 
 const writeSchema = Type.Object({
   path: Type.String({ description: "File path relative to the project root" }),
@@ -30,7 +30,7 @@ export function createWriteTool(projectRoot: string): AgentTool<typeof writeSche
       "Overwriting an existing file replaces its whole content.",
     parameters: writeSchema,
     execute: async (_toolCallId, params) => {
-      const absolute = requirePathInsideProject(projectRoot, params.path);
+      const absolute = resolveWorkspacePath(projectRoot, params.path);
       const existed = fs.existsSync(absolute);
       const previousLines =
         existed && fs.statSync(absolute).isFile()

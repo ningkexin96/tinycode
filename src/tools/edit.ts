@@ -2,7 +2,7 @@ import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
 import fs from "node:fs";
 import { diffStats, lineDiff, renderDiff } from "./diff.js";
-import { displayPath, requirePathInsideProject } from "./paths.js";
+import { displayPath, resolveWorkspacePath } from "./paths.js";
 
 const editSchema = Type.Object({
   path: Type.String({ description: "File path relative to the project root" }),
@@ -40,7 +40,7 @@ export function createEditTool(projectRoot: string): AgentTool<typeof editSchema
       "include more surrounding lines or pass `replaceAll: true`.",
     parameters: editSchema,
     execute: async (_toolCallId, params) => {
-      const absolute = requirePathInsideProject(projectRoot, params.path);
+      const absolute = resolveWorkspacePath(projectRoot, params.path);
 
       let current: string;
       try {

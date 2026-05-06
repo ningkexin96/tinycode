@@ -58,8 +58,8 @@ describe("read tool", () => {
 
   it("rejects paths outside the project", async () => {
     const tool = createReadTool(root);
-    await expect(tool.execute("t5", { path: "/etc/hosts" })).rejects.toThrow(/escapes project/);
-    await expect(tool.execute("t6", { path: "../outside.txt" })).rejects.toThrow(/escapes project/);
+    await expect(tool.execute("t5", { path: "/etc/hosts" })).rejects.toThrow(/resolves outside project/i);
+    await expect(tool.execute("t6", { path: "../outside.txt" })).rejects.toThrow(/resolves outside project/i);
   });
 
   it("detects binary files", async () => {
@@ -90,7 +90,7 @@ describe("write tool", () => {
 
   it("enforces the project boundary", async () => {
     const tool = createWriteTool(root);
-    await expect(tool.execute("w3", { path: "/tmp/evil.txt", content: "x" })).rejects.toThrow(/escapes project/);
+    await expect(tool.execute("w3", { path: "/tmp/evil.txt", content: "x" })).rejects.toThrow(/resolves outside project/i);
   });
 });
 
