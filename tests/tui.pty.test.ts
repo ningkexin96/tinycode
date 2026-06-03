@@ -73,8 +73,20 @@ async function waitFor(probe: () => boolean, timeoutMs: number, label: string): 
   }
 }
 
-function makeEnv(home: string): Record<string, string> {
-  return { TINYCODE_MODEL: "mock", TINYCODE_HOME: home, TERM: "xterm-256color" };
+function makeEnv(home: string, stripProviderKeys = false): Record<string, string> {
+  const env: Record<string, string> = {
+    ...process.env,
+    TINYCODE_MODEL: "mock",
+    TINYCODE_HOME: home,
+    TERM: "xterm-256color",
+  } as Record<string, string>;
+  if (stripProviderKeys) {
+    for (const key of Object.keys(env)) {
+      if (/API_KEY$|_TOKEN$/.test(key)) delete env[key];
+    }
+    delete env.TINYCODE_MODEL; // let resolution fail so onboarding kicks in
+  }
+  return env;
 }
 
 describe.skipIf(!canRunPty)("interactive TUI PTY smoke", () => {
@@ -132,6 +144,50 @@ describe.skipIf(!canRunPty)("interactive TUI PTY smoke", () => {
       const raw = fs.readFileSync(path.join(sessionsDir, files[0]!), "utf8");
       expect(raw).toContain("hello");
       expect(raw).toContain("mock model");
+    } finally {
+      session.term.kill();
+    }
+  }, 90_000);
+
+  it("launches without any API key: onboarding panel + mock mode still work", async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "tc-pty-ob-home-"));
+    const workdir = fs.mkdtempSync(path.join(os.tmpdir(), "tc-pty-ob-proj-"));
+
+    const session = await spawnTui(makeEnv(home, true), workdir);
+    try {
+      await waitFor(() => stripAnsi(session.output()).includes("TinyCode v1.0"), 20_000, "startup banner");
+      await waitFor(
+        () => stripAnsi(session.output()).includes("Setup required"),
+        10_000,
+        "onboarding setup panel",
+      );
+      await waitFor(
+        () => stripAnsi(session.output()).includes("mock/tinycode-mock"),
+        5_000,
+        "status bar shows mock model",
+      );
+
+      // The mock model still answers while unconfigured.
+      session.term.write("hi");
+      await waitFor(() => stripAnsi(session.output()).includes("hi"), 5_000, "input echoed");
+      session.term.write("\r");
+      await waitFor(
+        () => stripAnsi(session.output()).includes("TinyCode mock model"),
+        30_000,
+        "mock reply",
+      );
+
+      // Ctrl+D quits cleanly.
+      session.term.write("\x04");
+      const result = await Promise.race([
+        session.exited,
+        (() => {
+          const { promise, reject } = Promise.withResolvers<never>();
+          setTimeout(() => reject(new Error("hang after Ctrl+D")), 10_000).unref();
+          return promise;
+        })(),
+      ]);
+      expect(result.code).toBe(0);
     } finally {
       session.term.kill();
     }

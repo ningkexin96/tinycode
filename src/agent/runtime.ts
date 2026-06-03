@@ -34,7 +34,10 @@ export class TinyCodeRuntime {
       initialState: {
         systemPrompt: options.systemPrompt,
         model: options.model,
-        thinkingLevel: "off",
+        // "minimal" rather than "off": several hosted endpoints (e.g.
+        // OpenRouter claude-haiku-4.5) reject requests that disable reasoning
+        // outright, while models without thinking support ignore the hint.
+        thinkingLevel: "minimal",
         tools: options.tools.list(),
       },
       transformContext: options.contextManager.makeTransformContext(options.summarize),

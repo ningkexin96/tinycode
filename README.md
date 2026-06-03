@@ -89,12 +89,15 @@ cd tinycode && npm install && npm run build
 ```
 
 ```bash
-npm run dev                                  # full-screen terminal agent (needs a provider key)
+npm run dev                                  # full-screen terminal agent
 ANTHROPIC_API_KEY=sk-… npm run dev           # e.g. Anthropic — keys come from env only
 TINYCODE_MODEL=mock npm run dev              # offline: scripted mock model, zero setup
 tinycode -p "describe this project"          # one-shot mode (read-only by default)
 tinycode -p "refactor x" --permission-mode auto   # explicit opt-in to unattended writes
 ```
+
+> **No key yet?** TinyCode still starts: it launches in MOCK mode and shows a setup panel
+> with exact steps (export a key → restart). Nothing to configure upfront.
 
 > **Non-interactive safety:** `-p` runs headless — there is no approval dialog. ASK-level
 > operations are therefore **denied** unless you explicitly pass `--permission-mode auto`
@@ -136,8 +139,9 @@ Google and [more](https://github.com/earendil-works/pi) — everything Pi's cata
 
 ```json
 {
-  "provider": "anthropic",
-  "model": "claude-sonnet-4",
+  "provider": "openrouter",
+  "model": "anthropic/claude-haiku-4.5",
+  "maxOutputTokens": 16384,
   "permissionMode": "ask",
   "context": { "compactAboveTokens": 80000, "keepRecentMessages": 12 },
   "mcpServers": {

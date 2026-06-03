@@ -17,7 +17,7 @@ import type { McpManager } from "../mcp/manager.js";
 import type { PermissionManager } from "../permissions/manager.js";
 import type { SessionManager } from "../session/manager.js";
 import type { SkillRegistry } from "../skills/registry.js";
-import { fg, dim } from "./theme.js";
+import { fg, dim, bold } from "./theme.js";
 import {
   TranscriptView,
   textOfMessage,
@@ -36,6 +36,8 @@ export interface TuiAppDeps {
   mcp?: McpManager;
   subAgents?: SubAgentManager;
   projectRoot: string;
+  /** Shown when launch fell back to mock mode because no provider key exists. */
+  onboarding?: string;
 }
 
 const BANNER = [
@@ -169,9 +171,32 @@ export class TuiApp implements SlashContext {
 
   start(): void {
     this.transcript.addInfo(BANNER.join("\n"));
+    if (this.deps.onboarding) this.showOnboarding(this.deps.onboarding);
     this.refreshStatusBar();
     this.tui.start();
     this.tui.setFocus(this.editor);
+  }
+
+  /**
+   * First-run guidance when no provider key is configured: explain that the
+   * scripted mock model answers until a key exists, and give exact steps.
+   */
+  private showOnboarding(detail: string): void {
+    const lines = [
+      fg.brightYellow(bold("⚙  Setup required — currently in MOCK mode")),
+      dim("    Replies come from a scripted offline model, not a real LLM."),
+      "",
+      "To enable real models:",
+      "  1. Get an API key (openrouter.ai, anthropic.com, platform.openai.com, …)",
+      "  2. Add it to your shell profile, e.g.:",
+      '       export OPENROUTER_API_KEY="sk-or-v1-…"',
+      "     Other accepted names: ANTHROPIC_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, …",
+      "  3. Restart tinycode — or run `tinycode --list-models` to verify.",
+      "",
+      dim("Startup detail:"),
+      ...detail.split("\n").map((line) => dim(`  ${line}`)),
+    ];
+    this.transcript.addInfo(lines.join("\n"));
   }
 
   /** Run until the user exits; resolves after the TUI is torn down. */

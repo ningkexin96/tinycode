@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { buildHarnessFromCli, printHelp, printVersion, reportError } from "./commands.js";
+import { ModelNotConfiguredError } from "../model/registry.js";
 import { CliArgsError, parseArgs } from "./args.js";
 import { TuiApp } from "../tui/app.js";
 import { resolveInteractiveSession, type SessionOption } from "./sessions.js";
@@ -42,15 +43,30 @@ async function main(): Promise<number> {
   }
 
   // Interactive TUI — always owns a session (new or attached).
+  // No provider key configured? Launch anyway in mock mode and onboard
+  // inside the UI instead of refusing to start.
   try {
     const session: SessionOption = resolveInteractiveSession(args, cwd);
-    const harness = await buildHarnessFromCli({
-      cwd,
-      modelFlag: args.model,
-      permissionMode: args.permissionMode,
-      mock: args.mock,
-      session,
-    });
+    let onboardingNotice: string | undefined;
+    let harness;
+    try {
+      harness = await buildHarnessFromCli({
+        cwd,
+        modelFlag: args.model,
+        permissionMode: args.permissionMode,
+        mock: args.mock,
+        session,
+      });
+    } catch (error) {
+      if (!(error instanceof ModelNotConfiguredError) || args.mock) throw error;
+      harness = await buildHarnessFromCli({
+        cwd,
+        permissionMode: args.permissionMode,
+        mock: true,
+        session,
+      });
+      onboardingNotice = error.message;
+    }
     const app = new TuiApp(harness.runtime, {
       models: harness.models,
       permissions: harness.permissions,
@@ -59,6 +75,7 @@ async function main(): Promise<number> {
       mcp: harness.mcp,
       subAgents: harness.subAgents,
       projectRoot: cwd,
+      onboarding: onboardingNotice,
     });
     // Real terminals with ISIG deliver Ctrl+C as SIGINT; route it through the
     // same interrupt logic as the in-app keybinding.

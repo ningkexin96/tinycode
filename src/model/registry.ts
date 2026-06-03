@@ -31,9 +31,18 @@ export interface ModelRef {
 export class ModelRegistry {
   readonly models: MutableModels;
   private mock?: FauxProviderHandle;
+  private outputCap?: number;
 
   constructor() {
     this.models = builtinModels();
+  }
+
+  /**
+   * Cap per-request max_tokens regardless of the model catalog value.
+   * Useful with prepaid credit limits (e.g. OpenRouter 402 preflight).
+   */
+  setMaxOutputTokens(cap: number | undefined): void {
+    this.outputCap = cap;
   }
 
   /** Register a scripted offline provider and return its model. */
@@ -105,7 +114,14 @@ export class ModelRegistry {
   }
 
   /** Stream function handed to the pi Agent runtime. */
-  readonly streamFn: StreamFn = (model, context, options) => this.models.streamSimple(model, context, options);
+  readonly streamFn: StreamFn = (model, context, options) => {
+    const requested = options?.maxTokens ?? (model as { maxTokens?: number }).maxTokens;
+    const maxTokens =
+      this.outputCap !== undefined && requested !== undefined
+        ? Math.min(requested, this.outputCap)
+        : requested;
+    return this.models.streamSimple(model, context, { ...options, ...(maxTokens !== undefined ? { maxTokens } : {}) });
+  };
 
   listCatalog(provider?: string): Model<any>[] {
     return [...this.models.getModels(provider)];

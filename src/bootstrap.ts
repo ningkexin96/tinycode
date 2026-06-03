@@ -67,6 +67,9 @@ export async function bootstrapHarness(options: BootstrapOptions): Promise<Harne
   const { projectRoot, config } = options;
 
   const models = new ModelRegistry();
+  // Sensible default: full 32k+ model limits trip prepaid-credit preflight
+  // checks (OpenRouter 402). Override via config.maxOutputTokens.
+  models.setMaxOutputTokens(config.maxOutputTokens ?? 16384);
   const wantMock = options.mock === true || process.env.TINYCODE_MODEL === "mock";
   if (wantMock || (!options.modelRef && !config.provider && !config.model && process.env.TINYCODE_MODEL === "mock")) {
     models.enableMock();

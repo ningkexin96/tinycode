@@ -16,6 +16,8 @@ export const mcpServerSchema = z.object({
 export const configSchema = z.object({
   provider: z.string().min(1).optional(),
   model: z.string().min(1).optional(),
+  /** Cap on per-request output tokens (helps with prepaid credit limits). */
+  maxOutputTokens: z.number().int().positive().max(200000).optional(),
   /** "ask" shows the permission dialog; "auto" approves everything (tests/CI). */
   permissionMode: z.enum(["ask", "auto"]).optional(),
   context: z
