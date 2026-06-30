@@ -64,7 +64,10 @@ export async function buildHarnessFromCli(options: {
   mock: boolean;
   session?: { mode: "new" } | { mode: "attach"; id: string };
 }): Promise<Harness> {
-  const { config } = loadConfig(options.cwd);
+  const { config, warnings } = loadConfig(options.cwd);
+  for (const warning of warnings) {
+    process.stderr.write(`warning: ${warning}\n`);
+  }
   const modelRef = options.modelFlag ? parseModelRef(options.modelFlag) : undefined;
   const harness = await bootstrapHarness({
     projectRoot: options.cwd,

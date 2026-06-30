@@ -162,6 +162,10 @@ TinyCode's permission system is an **approval layer + workspace path guard, not 
 - Shell commands pass a risk classifier plus the same approval flow; they are not confined —
   an approved `bash` call can do anything your user can.
 - Running genuinely untrusted code/tasks requires an external sandbox (container, VM).
+- **API keys live in environment variables only.** `.gitignore` already excludes
+  `.env*`, `*.key`, `*.pem` and `.tinycode/*.local.json`; if a secret-looking field
+  appears in `.tinycode/config.json` (which is meant to be committed), startup prints
+  a loud warning.
 
 ## Documentation
 

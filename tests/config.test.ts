@@ -60,6 +60,28 @@ describe("config loader", () => {
     expect(config.permissionMode).toBe("auto");
   });
 
+  it("warns when config.json contains secret-looking fields", () => {
+    fs.mkdirSync(path.join(root, ".tinycode"));
+    fs.writeFileSync(
+      path.join(root, ".tinycode", "config.json"),
+      JSON.stringify({ provider: "openrouter", apiKey: "sk-or-v1-abc123", mcpServers: { s: { command: "x" } } }),
+    );
+    const { warnings } = loadConfig(root);
+    expect(warnings.join(" ")).toMatch(/look like API keys/);
+    expect(warnings.join(" ")).toContain('"apiKey"');
+    // The file itself must stay git-ignored-safe: schema still parses the rest.
+  });
+
+  it("warns on nested sk-prefixed values even with innocuous field names", () => {
+    fs.mkdirSync(path.join(root, ".tinycode"));
+    fs.writeFileSync(
+      path.join(root, ".tinycode", "config.json"),
+      JSON.stringify({ provider: "openrouter", note: "sk-v1-hidden-in-text" }),
+    );
+    const { warnings } = loadConfig(root);
+    expect(warnings.join(" ")).toMatch(/look like API keys/);
+  });
+
   it("ignores TINYCODE_MODEL=mock (handled by the registry)", () => {
     process.env.TINYCODE_MODEL = "mock";
     const { config } = loadConfig(root);

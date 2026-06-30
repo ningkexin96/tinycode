@@ -3,3 +3,10 @@ dist/
 .tmp/
 *.log
 .DS_Store
+
+# secrets & local credentials — never commit
+.env
+.env.*
+*.pem
+*.key
+.tinycode/*.local.json

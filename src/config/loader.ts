@@ -29,6 +29,29 @@ function parseModelRef(ref: string): { provider?: string; model?: string } {
   };
 }
 
+/**
+ * Defense against the classic accident: pasting an API key into config.json
+ * (which is safe to commit) and pushing it. Unknown to the schema by design —
+ * keys come from environment variables — so any secret-looking field is a mistake.
+ */
+const SECRET_FIELD_RE = /^(.*(?:api[_-]?key|apikey|secret|token|password|credential).*|sk-.*)$/i;
+
+function findSecretLikeFields(value: unknown, prefix = ""): string[] {
+  const hits: string[] = [];
+  if (Array.isArray(value)) return hits;
+  if (value !== null && typeof value === "object") {
+    for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+      const field = prefix ? `${prefix}.${key}` : key;
+      if (SECRET_FIELD_RE.test(key) || (typeof nested === "string" && /^sk-[A-Za-z0-9]/.test(nested))) {
+        hits.push(field);
+      } else {
+        hits.push(...findSecretLikeFields(nested, field));
+      }
+    }
+  }
+  return hits;
+}
+
 export interface LoadedConfig {
   config: TinyCodeConfig;
   /** Non-fatal problems: unreadable file, schema violations of unknown shape. */
@@ -47,7 +70,15 @@ export function loadConfig(projectRoot: string): LoadedConfig {
   const file = path.join(projectRoot, ".tinycode", "config.json");
   try {
     const raw = readFileSync(file, "utf8");
-    const parsed = configSchema.safeParse(JSON.parse(raw));
+    const json: unknown = JSON.parse(raw);
+    const secretFields = findSecretLikeFields(json);
+    if (secretFields.length > 0) {
+      warnings.push(
+        `${file} contains field(s) ${secretFields.map((f) => `"${f}"`).join(", ")} that look like API keys. ` +
+          `Keys are read from environment variables only; this file may be committed — remove secrets from it.`,
+      );
+    }
+    const parsed = configSchema.safeParse(json);
     if (parsed.success) {
       config = parsed.data;
     } else {
