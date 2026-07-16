@@ -1,0 +1,221 @@
+{
+  "id": "2026-08-26-131655",
+  "generated_at": "2026-08-26T05:16:55.692638Z",
+  "language": "zh",
+  "pages": [
+    {
+      "slug": "1-xiang-mu-gai-lan-ge-ke-yi-xia-wu-du-wan-de-bian-ma-zhi-neng-ti-gu-jia",
+      "title": "项目概览：一个可以一下午读完的编码智能体骨架",
+      "file": "1-xiang-mu-gai-lan-ge-ke-yi-xia-wu-du-wan-de-bian-ma-zhi-neng-ti-gu-jia.md",
+      "section": "快速入门",
+      "level": "Beginner"
+    },
+    {
+      "slug": "2-kuai-su-kai-shi-an-zhuang-gou-jian-yu-mock-mo-shi-ling-pei-zhi-yun-xing",
+      "title": "快速开始：安装、构建与 Mock 模式零配置运行",
+      "file": "2-kuai-su-kai-shi-an-zhuang-gou-jian-yu-mock-mo-shi-ling-pei-zhi-yun-xing.md",
+      "section": "快速入门",
+      "level": "Beginner"
+    },
+    {
+      "slug": "3-pei-zhi-ti-xi-config-json-huan-jing-bian-liang-yu-mi-yao-an-quan-guan-li",
+      "title": "配置体系：config.json、环境变量与密钥安全管理",
+      "file": "3-pei-zhi-ti-xi-config-json-huan-jing-bian-liang-yu-mi-yao-an-quan-guan-li.md",
+      "section": "快速入门",
+      "group": "配置与日常使用",
+      "level": "Beginner"
+    },
+    {
+      "slug": "4-jiao-hu-shi-tui-shi-yong-zhi-nan-kuai-jie-jian-shu-ru-yu-xie-gang-ming-ling",
+      "title": "交互式 TUI 使用指南：快捷键、输入与斜杠命令",
+      "file": "4-jiao-hu-shi-tui-shi-yong-zhi-nan-kuai-jie-jian-shu-ru-yu-xie-gang-ming-ling.md",
+      "section": "快速入门",
+      "group": "配置与日常使用",
+      "level": "Beginner"
+    },
+    {
+      "slug": "5-ci-xing-mo-shi-p-wu-tou-yun-xing-yu-quan-xian-mo-ren-ju-jue-yu-yi",
+      "title": "一次性模式（-p）：无头运行与权限默认拒绝语义",
+      "file": "5-ci-xing-mo-shi-p-wu-tou-yun-xing-yu-quan-xian-mo-ren-ju-jue-yu-yi.md",
+      "section": "快速入门",
+      "group": "配置与日常使用",
+      "level": "Beginner"
+    },
+    {
+      "slug": "6-fen-ceng-jia-gou-di-tu-pi-yun-xing-shi-yu-tinycode-zi-yan-ceng-de-zhi-ze-bian-jie",
+      "title": "分层架构地图：Pi 运行时与 TinyCode 自研层的职责边界",
+      "file": "6-fen-ceng-jia-gou-di-tu-pi-yun-xing-shi-yu-tinycode-zi-yan-ceng-de-zhi-ze-bian-jie.md",
+      "section": "深入剖析",
+      "group": "架构总览",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "7-harness-zhuang-pei-liu-cheng-bootstrap-ru-he-chuan-lian-quan-bu-zi-xi-tong",
+      "title": "Harness 装配流程：bootstrap 如何串联全部子系统",
+      "file": "7-harness-zhuang-pei-liu-cheng-bootstrap-ru-he-chuan-lian-quan-bu-zi-xi-tong.md",
+      "section": "深入剖析",
+      "group": "架构总览",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "8-tinycoderuntime-jie-pou-wu-ge-ce-lue-gou-zi-jie-ru-pi-dai-li-xun-huan",
+      "title": "TinyCodeRuntime 解剖：五个策略钩子接入 Pi 代理循环",
+      "file": "8-tinycoderuntime-jie-pou-wu-ge-ce-lue-gou-zi-jie-ru-pi-dai-li-xun-huan.md",
+      "section": "深入剖析",
+      "group": "智能体运行时",
+      "level": "Advanced"
+    },
+    {
+      "slug": "9-dai-li-xun-huan-yu-gong-ju-zhi-xing-liu-shui-xian-cong-liu-shi-xiang-ying-dao-jie-guo-luo-pan",
+      "title": "代理循环与工具执行流水线：从流式响应到结果落盘",
+      "file": "9-dai-li-xun-huan-yu-gong-ju-zhi-xing-liu-shui-xian-cong-liu-shi-xiang-ying-dao-jie-guo-luo-pan.md",
+      "section": "深入剖析",
+      "group": "智能体运行时",
+      "level": "Advanced"
+    },
+    {
+      "slug": "10-qi-da-nei-zhi-gong-ju-xiang-jie-read-edit-bash-deng-de-xing-wei-qi-yue",
+      "title": "七大内置工具详解：read/edit/bash 等的行为契约",
+      "file": "10-qi-da-nei-zhi-gong-ju-xiang-jie-read-edit-bash-deng-de-xing-wei-qi-yue.md",
+      "section": "深入剖析",
+      "group": "工具体系",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "11-tong-gong-ju-zhu-ce-biao-nei-zhi-mcp-yu-zi-dai-li-gong-ju-de-ming-ming-kong-jian-he-bing",
+      "title": "统一工具注册表：内置、MCP 与子代理工具的命名空间合并",
+      "file": "11-tong-gong-ju-zhu-ce-biao-nei-zhi-mcp-yu-zi-dai-li-gong-ju-de-ming-ming-kong-jian-he-bing.md",
+      "section": "深入剖析",
+      "group": "工具体系",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "12-gong-zuo-qu-lu-jing-shou-wei-fu-hao-lian-jie-gan-zhi-de-shuang-ce-realpath-xiao-yan",
+      "title": "工作区路径守卫：符号链接感知的双侧 realpath 校验",
+      "file": "12-gong-zuo-qu-lu-jing-shou-wei-fu-hao-lian-jie-gan-zhi-de-shuang-ce-realpath-xiao-yan.md",
+      "section": "深入剖析",
+      "group": "工具体系",
+      "level": "Advanced"
+    },
+    {
+      "slug": "13-shell-feng-xian-fen-lei-qi-safe-write-yu-destructive-san-ji-pan-ding",
+      "title": "Shell 风险分类器：safe、write 与 destructive 三级判定",
+      "file": "13-shell-feng-xian-fen-lei-qi-safe-write-yu-destructive-san-ji-pan-ding.md",
+      "section": "深入剖析",
+      "group": "权限与安全",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "14-quan-xian-zha-men-cai-jue-shun-xu-ying-ju-jue-ji-yi-mo-shi-auto-yu-ask-hui-tui",
+      "title": "权限闸门裁决顺序：硬拒绝、记忆模式、auto 与 ASK 回退",
+      "file": "14-quan-xian-zha-men-cai-jue-shun-xu-ying-ju-jue-ji-yi-mo-shi-auto-yu-ask-hui-tui.md",
+      "section": "深入剖析",
+      "group": "权限与安全",
+      "level": "Advanced"
+    },
+    {
+      "slug": "15-shen-pi-jiao-hu-mian-tui-dui-hua-kuang-yu-wu-tou-mo-shi-de-chai-yi-hua-yu-yi",
+      "title": "审批交互面：TUI 对话框与无头模式的差异化语义",
+      "file": "15-shen-pi-jiao-hu-mian-tui-dui-hua-kuang-yu-wu-tou-mo-shi-de-chai-yi-hua-yu-yi.md",
+      "section": "深入剖析",
+      "group": "权限与安全",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "16-an-quan-mo-xing-sheng-ming-shen-pi-ceng-jia-lu-jing-shou-wei-bing-fei-cao-zuo-xi-tong-sha-xiang",
+      "title": "安全模型声明：审批层加路径守卫并非操作系统沙箱",
+      "file": "16-an-quan-mo-xing-sheng-ming-shen-pi-ceng-jia-lu-jing-shou-wei-bing-fei-cao-zuo-xi-tong-sha-xiang.md",
+      "section": "深入剖析",
+      "group": "权限与安全",
+      "level": "Advanced"
+    },
+    {
+      "slug": "17-gong-ju-jie-guo-jie-duan-ce-lue-tou-wei-bao-liu-yu-wan-zheng-shu-chu-gui-dang-wei-gong-jian",
+      "title": "工具结果截断策略：头尾保留与完整输出归档为工件",
+      "file": "17-gong-ju-jie-guo-jie-duan-ce-lue-tou-wei-bao-liu-yu-wan-zheng-shu-chu-gui-dang-wei-gong-jian.md",
+      "section": "深入剖析",
+      "group": "上下文工程",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "18-token-yu-suan-yu-zi-dong-ya-suo-hui-hua-zhai-yao-sheng-cheng-yu-bao-hu-chuang-kou",
+      "title": "Token 预算与自动压缩：会话摘要生成与保护窗口",
+      "file": "18-token-yu-suan-yu-zi-dong-ya-suo-hui-hua-zhai-yao-sheng-cheng-yu-bao-hu-chuang-kou.md",
+      "section": "深入剖析",
+      "group": "上下文工程",
+      "level": "Advanced"
+    },
+    {
+      "slug": "19-zhui-jia-shi-jsonl-cun-chu-beng-kui-an-quan-de-hui-hua-chi-jiu-hua-she-ji",
+      "title": "追加式 JSONL 存储：崩溃安全的会话持久化设计",
+      "file": "19-zhui-jia-shi-jsonl-cun-chu-beng-kui-an-quan-de-hui-hua-chi-jiu-hua-she-ji.md",
+      "section": "深入剖析",
+      "group": "会话管理",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "20-hui-hua-sheng-ming-zhou-qi-xin-jian-continue-mu-lu-pi-pei-yu-new-lun-huan",
+      "title": "会话生命周期：新建、--continue 目录匹配与 /new 轮换",
+      "file": "20-hui-hua-sheng-ming-zhou-qi-xin-jian-continue-mu-lu-pi-pei-yu-new-lun-huan.md",
+      "section": "深入剖析",
+      "group": "会话管理",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "21-ji-neng-xi-tong-skill-md-fa-xian-yu-load_skill-jian-jin-shi-pi-lu",
+      "title": "技能系统：SKILL.md 发现与 load_skill 渐进式披露",
+      "file": "21-ji-neng-xi-tong-skill-md-fa-xian-yu-load_skill-jian-jin-shi-pi-lu.md",
+      "section": "深入剖析",
+      "group": "扩展机制",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "22-mcp-ji-cheng-stdio-fu-wu-qi-bing-xing-lian-jie-yu-dan-dian-gu-zhang-ge-chi",
+      "title": "MCP 集成：stdio 服务器并行连接与单点故障隔离",
+      "file": "22-mcp-ji-cheng-stdio-fu-wu-qi-bing-xing-lian-jie-yu-dan-dian-gu-zhang-ge-chi.md",
+      "section": "深入剖析",
+      "group": "扩展机制",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "23-zi-dai-li-jian-du-zhi-du-gong-zuo-xian-cheng-bing-fa-shang-xian-yu-jie-gou-hua-bao-gao-hui-shou",
+      "title": "子代理监督：只读工作线程、并发上限与结构化报告回收",
+      "file": "23-zi-dai-li-jian-du-zhi-du-gong-zuo-xian-cheng-bing-fa-shang-xian-yu-jie-gou-hua-bao-gao-hui-shou.md",
+      "section": "深入剖析",
+      "group": "扩展机制",
+      "level": "Advanced"
+    },
+    {
+      "slug": "24-liu-shi-tui-zu-cheng-zu-jian-shu-shi-jian-ying-she-yu-xian-shi-zhong-hui-gui-ze",
+      "title": "流式 TUI 组成：组件树、事件映射与显式重绘规则",
+      "file": "24-liu-shi-tui-zu-cheng-zu-jian-shu-shi-jian-ying-she-yu-xian-shi-zhong-hui-gui-ze.md",
+      "section": "深入剖析",
+      "group": "界面与模型层",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "25-mo-xing-zhu-ce-biao-duo-ti-gong-shang-xuan-ze-lian-yu-mock-mo-xing-zhu-ru",
+      "title": "模型注册表：多提供商选择链与 Mock 模型注入",
+      "file": "25-mo-xing-zhu-ce-biao-duo-ti-gong-shang-xuan-ze-lian-yu-mock-mo-xing-zhu-ru.md",
+      "section": "深入剖析",
+      "group": "界面与模型层",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "26-quan-chi-xian-ce-shi-ce-lue-jiao-ben-hua-mock-mo-xing-qu-dong-zhen-shi-dai-li-xun-huan-de-e2e",
+      "title": "全离线测试策略：脚本化 Mock 模型驱动真实代理循环的 E2E",
+      "file": "26-quan-chi-xian-ce-shi-ce-lue-jiao-ben-hua-mock-mo-xing-qu-dong-zhen-shi-dai-li-xun-huan-de-e2e.md",
+      "section": "深入剖析",
+      "group": "测试工程",
+      "level": "Advanced"
+    },
+    {
+      "slug": "27-zhi-liang-men-jin-pty-ji-tui-ce-shi-yu-node-duo-ban-ben-ci",
+      "title": "质量门禁：PTY 级 TUI 测试与 Node 多版本 CI",
+      "file": "27-zhi-liang-men-jin-pty-ji-tui-ce-shi-yu-node-duo-ban-ben-ci.md",
+      "section": "深入剖析",
+      "group": "测试工程",
+      "level": "Intermediate"
+    }
+  ]
+}

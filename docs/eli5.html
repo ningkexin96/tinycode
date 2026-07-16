@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TinyCode 是什么？——给完全小白的图画版解析</title>
+<style>
+  :root { --ink:#1a2233; --bg:#f7f8fb; --card:#ffffff; --green:#2fae6d; --yellow:#f2b705; --red:#e5484d; --blue:#3b82f6; --purple:#8b5cf6; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; background:var(--bg); color:var(--ink); line-height:1.6; }
+  .hero { text-align:center; padding:64px 20px 40px; }
+  .hero h1 { font-size:clamp(28px,5vw,52px); }
+  .hero p  { font-size:clamp(16px,2.4vw,22px); color:#5b6478; margin-top:10px; }
+  section { max-width:980px; margin:0 auto 28px; padding:36px 28px; background:var(--card); border-radius:24px; box-shadow:0 4px 20px rgba(26,34,51,.06); }
+  h2 { font-size:clamp(22px,3.4vw,32px); text-align:center; margin-bottom:8px; }
+  .sub { text-align:center; color:#5b6478; margin-bottom:22px; font-size:17px; }
+  svg { display:block; margin:0 auto; max-width:100%; height:auto; }
+  .caption { text-align:center; color:#5b6478; font-size:15px; margin-top:14px; }
+  .pills { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; }
+  .pill { padding:10px 18px; border-radius:999px; font-size:17px; font-weight:600; }
+  .foot { text-align:center; color:#8a92a6; font-size:14px; padding:10px 20px 50px; }
+  .foot a { color:var(--blue); }
+  .big { font-size:20px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>🐹 TinyCode</h1>
+  <p>一个<b>住在你终端里</b>的 AI 编程小助手 —— 它是怎么工作的？</p>
+  <p style="margin-top:6px;">全程只用图画 + 大白话，5 分钟看懂。</p>
+</div>
+
+<!-- 1 是什么 -->
+<section>
+  <h2>1️⃣ TinyCode 是什么？</h2>
+  <p class="sub">你用中文说想要什么，它自己动手改代码。</p>
+  <svg viewBox="0 0 880 240" width="880" role="img" aria-label="你说一句话，AI 改好代码">
+    <rect x="20"  y="60" width="240" height="120" rx="20" fill="#eef4ff" stroke="#3b82f6" stroke-width="3"/>
+    <text x="140" y="105" text-anchor="middle" font-size="40">🗣️ 你</text>
+    <text x="140" y="150" text-anchor="middle" font-size="18" fill="#5b6478">“帮我修好这个 bug”</text>
+    <rect x="320" y="60" width="240" height="120" rx="20" fill="#f5f0ff" stroke="#8b5cf6" stroke-width="3"/>
+    <text x="440" y="105" text-anchor="middle" font-size="40">🐹 TinyCode</text>
+    <text x="440" y="150" text-anchor="middle" font-size="18" fill="#5b6478">住在终端里</text>
+    <rect x="620" y="60" width="240" height="120" rx="20" fill="#edfaf2" stroke="#2fae6d" stroke-width="3"/>
+    <text x="740" y="105" text-anchor="middle" font-size="40">📁 你的项目</text>
+    <text x="740" y="150" text-anchor="middle" font-size="18" fill="#5b6478">文件真的被改好了</text>
+    <line x1="262" y1="120" x2="316" y2="120" stroke="#1a2233" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="562" y1="120" x2="616" y2="120" stroke="#1a2233" stroke-width="4" marker-end="url(#arrow)"/>
+    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1a2233"/></marker></defs>
+  </svg>
+  <p class="caption">它不是聊天机器人 —— 它有<b>手</b>（工具），能真的读文件、改文件、跑命令。</p>
+</section>
+
+<!-- 2 大循环 -->
+<section>
+  <h2>2️⃣ 核心：一个不停转的圈圈 🔄</h2>
+  <p class="sub">AI 大脑不会直接碰你的电脑，每一步都靠这个循环。</p>
+  <svg viewBox="0 0 880 430" width="880" role="img" aria-label="代理循环">
+    <defs><marker id="a2" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1a2233"/></marker></defs>
+    <rect x="40"  y="40"  width="220" height="90" rx="18" fill="#eef4ff" stroke="#3b82f6" stroke-width="3"/>
+    <text x="150" y="80"  text-anchor="middle" font-size="22" font-weight="700">🗣️ 1. 你下指令</text>
+    <text x="150" y="110" text-anchor="middle" font-size="15" fill="#5b6478">“修好这个 bug”</text>
+
+    <rect x="330" y="40"  width="220" height="90" rx="18" fill="#f5f0ff" stroke="#8b5cf6" stroke-width="3"/>
+    <text x="440" y="80"  text-anchor="middle" font-size="22" font-weight="700">🧠 2. 大脑思考</text>
+    <text x="440" y="110" text-anchor="middle" font-size="15" fill="#5b6478">AI 模型（会流式吐字）</text>
+
+    <rect x="620" y="40"  width="220" height="90" rx="18" fill="#fff7e6" stroke="#f2b705" stroke-width="3"/>
+    <text x="730" y="80"  text-anchor="middle" font-size="22" font-weight="700">🛠️ 3. 动手干活</text>
+    <text x="730" y="110" text-anchor="middle" font-size="15" fill="#5b6478">调用工具：读文件、改代码…</text>
+
+    <rect x="620" y="290" width="220" height="90" rx="18" fill="#edfaf2" stroke="#2fae6d" stroke-width="3"/>
+    <text x="730" y="330" text-anchor="middle" font-size="22" font-weight="700">📋 4. 汇报结果</text>
+    <text x="730" y="360" text-anchor="middle" font-size="15" fill="#5b6478">“改了 3 行，测试通过 ✅”</text>
+
+    <rect x="330" y="290" width="220" height="90" rx="18" fill="#fdeeee" stroke="#e5484d" stroke-width="3"/>
+    <text x="440" y="330" text-anchor="middle" font-size="22" font-weight="700">🧠 5. 再想一想</text>
+    <text x="440" y="360" text-anchor="middle" font-size="15" fill="#5b6478">够了吗？不够就回到 3</text>
+
+    <line x1="262" y1="85"  x2="326" y2="85"  stroke="#1a2233" stroke-width="4" marker-end="url(#a2)"/>
+    <line x1="552" y1="85"  x2="616" y2="85"  stroke="#1a2233" stroke-width="4" marker-end="url(#a2)"/>
+    <line x1="730" y1="132" x2="730" y2="286" stroke="#1a2233" stroke-width="4" marker-end="url(#a2)"/>
+    <line x1="616" y1="335" x2="554" y2="335" stroke="#1a2233" stroke-width="4" marker-end="url(#a2)"/>
+    <path d="M 328 335 Q 150 335 150 140" fill="none" stroke="#1a2233" stroke-width="4" marker-end="url(#a2)"/>
+    <text x="150" y="250" text-anchor="middle" font-size="16" fill="#5b6478">想清楚了 →</text>
+    <text x="150" y="274" text-anchor="middle" font-size="16" fill="#5b6478">回答你，循环结束 🎉</text>
+  </svg>
+  <p class="caption">这个圈圈叫 <b>Agent Loop（代理循环）</b>，是所有 AI 编程助手的心脏。TinyCode 的循环由 Pi 库驱动。</p>
+</section>
+
+<!-- 3 工具箱 -->
+<section>
+  <h2>3️⃣ 它的七件工具 🧰</h2>
+  <p class="sub">大脑很聪明，但没有手什么都做不了。工具就是它的手。</p>
+  <div class="pills">
+    <span class="pill" style="background:#eef4ff;">👀 read 看文件</span>
+    <span class="pill" style="background:#edfaf2;">✏️ write 新建文件</span>
+    <span class="pill" style="background:#fff7e6;">🔧 edit 精准改几行</span>
+    <span class="pill" style="background:#fdeeee;">⚡ bash 跑命令</span>
+    <span class="pill" style="background:#eef4ff;">🔍 grep 搜内容</span>
+    <span class="pill" style="background:#edfaf2;">🗺️ find 找文件名</span>
+    <span class="pill" style="background:#fff7e6;">📂 ls 看目录</span>
+  </div>
+  <p class="caption">每个工具都有<b>使用说明书</b>（参数格式）。AI 看说明书点菜，TinyCode 负责上菜。</p>
+</section>
+
+<!-- 4 红绿灯 -->
+<section>
+  <h2>4️⃣ 安全带：红绿灯规则 🚦</h2>
+  <p class="sub">AI 不是每件事都能偷偷干，危险的事必须先问你。</p>
+  <svg viewBox="0 0 880 300" width="880" role="img" aria-label="权限红绿灯">
+    <rect x="30"  y="40" width="260" height="200" rx="20" fill="#edfaf2" stroke="#2fae6d" stroke-width="4"/>
+    <circle cx="160" cy="105" r="34" fill="#2fae6d"/>
+    <text x="160" y="118" text-anchor="middle" font-size="30" fill="#fff" font-weight="700">✓</text>
+    <text x="160" y="175" text-anchor="middle" font-size="21" font-weight="700">绿灯：直接干</text>
+    <text x="160" y="207" text-anchor="middle" font-size="15" fill="#5b6478">看文件、搜代码</text>
+
+    <rect x="310" y="40" width="260" height="200" rx="20" fill="#fff7e6" stroke="#f2b705" stroke-width="4"/>
+    <circle cx="440" cy="105" r="34" fill="#f2b705"/>
+    <text x="440" y="117" text-anchor="middle" font-size="30" fill="#fff" font-weight="700">?</text>
+    <text x="440" y="175" text-anchor="middle" font-size="21" font-weight="700">黄灯：先问你</text>
+    <text x="440" y="207" text-anchor="middle" font-size="15" fill="#5b6478">改文件、写文件</text>
+
+    <rect x="590" y="40" width="260" height="200" rx="20" fill="#fdeeee" stroke="#e5484d" stroke-width="4"/>
+    <circle cx="720" cy="105" r="34" fill="#e5484d"/>
+    <text x="720" y="118" text-anchor="middle" font-size="30" fill="#fff" font-weight="700">✗</text>
+    <text x="720" y="175" text-anchor="middle" font-size="21" font-weight="700">红灯：默认拒绝</text>
+    <text x="720" y="207" text-anchor="middle" font-size="15" fill="#5b6478">删库、强制推送…</text>
+  </svg>
+  <p class="caption">改你项目外的东西？<b>永远不行</b>。它还认得“绕路的小抄”（符号链接），骗不过去。</p>
+</section>
+
+<!-- 5 日记本 -->
+<section>
+  <h2>5️⃣ 记性：一本只加页的日记本 📓</h2>
+  <p class="sub">聊过的每一句、干过的每一件事都记下来，关掉程序也不丢。</p>
+  <svg viewBox="0 0 880 220" width="880" role="img" aria-label="会话日记本">
+    <rect x="60"  y="40" width="180" height="60" rx="10" fill="#eef4ff" stroke="#3b82f6" stroke-width="3"/>
+    <text x="150" y="77" text-anchor="middle" font-size="17">第 1 页：你说了啥</text>
+    <rect x="280" y="40" width="180" height="60" rx="10" fill="#edfaf2" stroke="#2fae6d" stroke-width="3"/>
+    <text x="370" y="77" text-anchor="middle" font-size="17">第 2 页：改了啥</text>
+    <rect x="500" y="40" width="180" height="60" rx="10" fill="#fff7e6" stroke="#f2b705" stroke-width="3"/>
+    <text x="590" y="77" text-anchor="middle" font-size="17">第 3 页：跑了个命令</text>
+    <rect x="720" y="40" width="120" height="60" rx="10" fill="#f0f1f5" stroke="#8a92a6" stroke-width="3" stroke-dasharray="7 5"/>
+    <text x="780" y="77" text-anchor="middle" font-size="17" fill="#5b6478">明天继续…</text>
+    <line x1="242" y1="70" x2="276" y2="70" stroke="#1a2233" stroke-width="4" marker-end="url(#a2)"/>
+    <line x1="462" y1="70" x2="496" y2="70" stroke="#1a2233" stroke-width="4" marker-end="url(#a2)"/>
+    <line x1="682" y1="70" x2="716" y2="70" stroke="#1a2233" stroke-width="4" marker-end="url(#a2)"/>
+    <text x="440" y="160" text-anchor="middle" font-size="17" fill="#5b6478">只往后面加页，从不撕页改字 → 就算突然断电，记的东西也不会坏</text>
+  </svg>
+  <p class="caption">所以 <code>tinycode --continue</code> 能接上昨天的对话。每段对话一个独立本子，不同项目不串台。</p>
+</section>
+
+<!-- 6 行李箱 -->
+<section>
+  <h2>6️⃣ 行李箱：AI 的记性是有限的 🧳</h2>
+  <p class="sub">大脑一次只能装那么多字。装不下怎么办？两招。</p>
+  <svg viewBox="0 0 880 260" width="880" role="img" aria-label="上下文管理">
+    <rect x="80" y="70" width="300" height="150" rx="16" fill="#fdeeee" stroke="#e5484d" stroke-width="4"/>
+    <text x="230" y="120" text-anchor="middle" font-size="44">🧳💥</text>
+    <text x="230" y="165" text-anchor="middle" font-size="19" font-weight="700">塞太满 → 装不下</text>
+    <text x="230" y="195" text-anchor="middle" font-size="15" fill="#5b6478">比如跑测试输出几千行</text>
+    <line x1="420" y1="145" x2="470" y2="145" stroke="#1a2233" stroke-width="4" marker-end="url(#a2)"/>
+    <rect x="500" y="70" width="300" height="150" rx="16" fill="#edfaf2" stroke="#2fae6d" stroke-width="4"/>
+    <text x="650" y="120" text-anchor="middle" font-size="44">🧳✨</text>
+    <text x="650" y="165" text-anchor="middle" font-size="19" font-weight="700">两招收拾好</text>
+    <text x="650" y="195" text-anchor="middle" font-size="15" fill="#5b6478">① 长输出只留头尾 ② 旧聊天压成摘要</text>
+  </svg>
+  <p class="caption">重要的事永远保留：你最新的要求、最近改的文件、最近出的错。</p>
+</section>
+
+<!-- 7 三种帮手 -->
+<section>
+  <h2>7️⃣ 它还有三个帮手 🤝</h2>
+  <p class="sub">自己不够用时，会请外援。</p>
+  <div class="pills">
+    <span class="pill" style="background:#eef4ff; font-size:18px;">📖 技能 Skills<br><span style="font-weight:400; font-size:15px;">项目里的说明书，需要时才翻</span></span>
+    <span class="pill" style="background:#edfaf2; font-size:18px;">🔌 MCP 外挂<br><span style="font-weight:400; font-size:15px;">接上外面的工具，比如查网页</span></span>
+    <span class="pill" style="background:#fff7e6; font-size:18px;">👥 子代理 Sub-Agent<br><span style="font-weight:400; font-size:15px;">派小弟去翻代码，只带结论回来</span></span>
+  </div>
+</section>
+
+<!-- 8 安全声明 -->
+<section>
+  <h2>8️⃣ 一句大实话 ⚠️</h2>
+  <p class="sub" style="font-size:19px;">TinyCode 的红绿灯是<b>礼貌的门卫</b>，不是监狱围墙。</p>
+  <p class="caption big">它能拦住不小心，拦不住故意使坏。<br>让 AI 跑来路不明的任务时，请关在容器/虚拟机里。</p>
+</section>
+
+<!-- 尾 -->
+<section style="text-align:center;">
+  <h2>🎁 彩蛋</h2>
+  <p class="sub" style="font-size:19px;">这整套东西（循环 + 工具 + 红绿灯 + 日记本 + 行李箱 + 三个帮手）<br>全部源码 <b>约 6 千行</b>，一个下午就能读完。</p>
+  <p class="caption big">想看真代码？去仓库根目录：<code>docs/wiki/</code> 有 27 篇深入解析。</p>
+</section>
+
+<p class="foot">TinyCode · Learn Agent Engineering by building a Coding Agent · <a href="https://github.com/helsome/tinycode">GitHub</a></p>
+</body>
+</html>
