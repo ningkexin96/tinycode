@@ -1,8 +1,16 @@
-export { createBashTool } from "./bash.js";
-export { createEditTool } from "./edit.js";
-export { createFindTool } from "./find.js";
-export { createGrepTool } from "./grep.js";
-export { createLsTool } from "./ls.js";
-export { createReadTool } from "./read.js";
-export { createWriteTool } from "./write.js";
+export {
+  createListTicketsTool,
+  createGetTicketTool,
+  createSearchTicketsTool,
+  createClassifyTicketTool,
+  createRouteTicketTool,
+  createEscalateTicketTool,
+  createReplyCustomerTool,
+} from "./tickets.js";
+export {
+  createSearchKnowledgeTool,
+  createReadArticleTool,
+  createProposeKnowledgeEditTool,
+} from "./knowledge.js";
 export { ToolRegistry } from "./registry.js";
+export type { DomainToolContext } from "./context.js";

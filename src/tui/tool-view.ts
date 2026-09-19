@@ -1,6 +1,4 @@
-import type { BashDetails } from "../tools/bash.js";
-import type { EditDetails } from "../tools/edit.js";
-import type { WriteDetails } from "../tools/write.js";
+import type { KnowledgeEditDetails } from "../tools/knowledge.js";
 import { fg, bold, dim } from "./theme.js";
 
 /**
@@ -11,18 +9,28 @@ import { fg, bold, dim } from "./theme.js";
 function argSummary(toolName: string, args: Record<string, unknown> | undefined): string {
   if (!args) return "";
   switch (toolName) {
-    case "read":
-    case "write":
-    case "edit":
-      return String(args.path ?? "");
-    case "bash":
-      return String(args.command ?? "");
-    case "grep":
-      return `/${args.pattern ?? ""}/${args.include ? ` in ${String(args.include)}` : ""}`;
-    case "find":
-      return String(args.pattern ?? "");
-    case "ls":
-      return String(args.path ?? ".");
+    case "list_tickets":
+      return [args.status, args.queue, args.priority, args.category]
+        .filter((value) => typeof value === "string" && value.length > 0)
+        .join(" ");
+    case "get_ticket":
+    case "reply_customer":
+      return String(args.ticket_id ?? "");
+    case "search_tickets":
+    case "search_knowledge":
+      return String(args.query ?? "");
+    case "read_article":
+      return String(args.article_id ?? "");
+    case "classify_ticket":
+      return `${args.ticket_id ?? ""} ${args.category ?? ""} ${args.priority ?? ""}`.trim();
+    case "route_ticket":
+      return `${args.ticket_id ?? ""} → ${args.queue ?? ""}`.trim();
+    case "escalate_ticket":
+      return `${args.ticket_id ?? ""} L${args.level ?? "?"}`;
+    case "propose_knowledge_edit":
+      return `${args.article_id ?? ""} (${
+        typeof args.new_text === "string" ? args.new_text.length : 0
+      } chars)`;
     case "load_skill":
       return String(args.name ?? "");
     default:
@@ -48,39 +56,31 @@ export function formatToolResultLines(
   const mark = isError ? fg.brightRed("✗") : fg.brightGreen("✓");
 
   switch (toolName) {
-    case "read": {
-      const lines = typeof d.totalLines === "number" ? d.totalLines : (d.lineCount as number) ?? "?";
-      return [`${mark} ${lines} lines`];
+    case "list_tickets":
+    case "search_tickets":
+      return [`${mark} ${d.count ?? "?"} 条工单`];
+    case "search_knowledge":
+      return [`${mark} ${d.count ?? "?"} 篇知识`];
+    case "get_ticket": {
+      const ticket = d.ticket as { id?: string } | undefined;
+      return [`${mark} ${ticket?.id ?? "工单已读取"}`];
     }
-    case "bash": {
-      const b = d as Partial<BashDetails>;
-      const seconds = typeof b.durationMs === "number" ? `${(b.durationMs / 1000).toFixed(1)}s` : "?";
-      const status = b.timedOut
-        ? "timeout"
-        : b.exitCode === 0 || b.exitCode == null
-          ? `exit ${b.exitCode ?? "?"}`
-          : `exit ${b.exitCode}`;
-      return [`${mark} ${status} · ${seconds}`];
-    }
-    case "edit": {
-      const e = d as Partial<EditDetails>;
-      return [
-        `${mark} +${e.additions ?? "?"} -${e.deletions ?? "?"}`,
-        ...(typeof e.diff === "string" && e.diff.length > 0 && !isError ? previewDiff(e.diff) : []),
-      ];
-    }
-    case "write": {
-      const w = d as Partial<WriteDetails>;
-      return [`${mark} ${w.created ? "created" : "overwritten"} · +${w.additions ?? "?"} -${w.deletions ?? "?"}`];
-    }
-    case "grep": {
-      return [`${mark} ${d.matches ?? "?"} match(es) in ${d.filesSearched ?? "?"} files`];
-    }
-    case "find": {
-      return [`${mark} ${d.count ?? "?"} file(s)`];
-    }
-    case "ls": {
-      return [`${mark} ${d.count ?? "?"} entr(y|ies)`];
+    case "classify_ticket":
+      return [`${mark} ${d.category ?? "?"} · ${d.priority ?? "?"} → triaged`];
+    case "route_ticket":
+      return [`${mark} → ${d.queue ?? "?"} · routed`];
+    case "escalate_ticket":
+      return [`${mark} → L${d.level ?? "?"} · escalated`];
+    case "reply_customer":
+      return [`${mark} 客户回复 ${d.length ?? "?"} 字`];
+    case "propose_knowledge_edit": {
+      const edit = d as Partial<KnowledgeEditDetails>;
+      const skipped = edit.applied === false ? "（短路跳过）" : "";
+      const lines = [`${mark} +${edit.additions ?? "?"} -${edit.deletions ?? "?"}${skipped}`];
+      if (typeof edit.diff === "string" && edit.diff.length > 0 && !isError) {
+        lines.push(...previewDiff(edit.diff));
+      }
+      return lines;
     }
     default:
       return [`${mark} done`];

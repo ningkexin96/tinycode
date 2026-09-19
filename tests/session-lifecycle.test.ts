@@ -149,6 +149,22 @@ describe("default interactive session lifecycle (harness level)", () => {
   it("/new keeps the harness intact — tool calling still works after reset", async () => {
     const workdir = fs.mkdtempSync(path.join(os.tmpdir(), "tc-life-reset-"));
     fs.writeFileSync(path.join(workdir, "marker.txt"), "still here\n");
+    fs.mkdirSync(path.join(workdir, "tickets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(workdir, "tickets", "T-1001.json"),
+      JSON.stringify({
+        id: "T-1001",
+        subject: "退款：订单 8842 已付款但未收到货",
+        customer: "张伟",
+        channel: "email",
+        createdAt: "2026-09-18T09:12:00+08:00",
+        slaMinutes: 240,
+        status: "open",
+        messages: [
+          { from: "customer", text: "我在 9 月 10 日下单（订单号 8842），要求全额退款。", at: "2026-09-18T09:12:00+08:00" },
+        ],
+      }),
+    );
     const harness = await bootstrapHarness({
       projectRoot: workdir,
       config: { permissionMode: "auto" },
@@ -168,15 +184,15 @@ describe("default interactive session lifecycle (harness level)", () => {
       expect(harness.runtime.agent.state.systemPrompt.length).toBeGreaterThan(0);
 
       harness.models.mockHandle!.setResponses([
-        fauxAssistantMessage([fauxToolCall("read", { path: "marker.txt" })]),
-        fauxAssistantMessage("Read marker after /new."),
+        fauxAssistantMessage([fauxToolCall("get_ticket", { ticket_id: "T-1001" })]),
+        fauxAssistantMessage("Read ticket T-1001 after /new."),
       ]);
-      await harness.runtime.prompt("read the marker again");
+      await harness.runtime.prompt("read the ticket again");
 
       const results = harness.runtime.agent.state.messages.filter((m) => m.role === "toolResult");
       expect(results).toHaveLength(1);
       expect(results[0]!.isError).toBe(false);
-      expect(JSON.stringify(results[0]!.content)).toContain("still here");
+      expect(JSON.stringify(results[0]!.content)).toContain("订单号 8842");
     } finally {
       await harness.shutdown();
     }

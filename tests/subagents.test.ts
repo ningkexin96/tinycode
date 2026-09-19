@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { SubAgentManager } from "../src/agents/manager.js";
+import { createListTicketsTool } from "../src/tools/tickets.js";
 import { fauxAssistantMessage, fauxToolCall, type FauxProviderHandle } from "@earendil-works/pi-ai";
 import type { ModelRegistry } from "../src/model/registry.js";
 
@@ -10,6 +11,19 @@ let root: string;
 let registry: ModelRegistry;
 let mock: FauxProviderHandle;
 
+/** Collect the text of every tool result in a faux-model request context. */
+function toolResultText(context: { messages: readonly unknown[] }): string {
+  const texts: string[] = [];
+  for (const message of context.messages) {
+    const record = message as { role?: string; content?: unknown };
+    if (record.role !== "toolResult" || !Array.isArray(record.content)) continue;
+    for (const part of record.content) {
+      const block = part as { type?: string; text?: unknown };
+      if (block.type === "text" && typeof block.text === "string") texts.push(block.text);
+    }
+  }
+  return texts.join("\n");
+}
 beforeEach(async () => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "tc-agents-"));
   fs.writeFileSync(path.join(root, "note.txt"), "the secret code is PURPLE-7\n");
@@ -44,23 +58,43 @@ describe("SubAgentManager lifecycle", () => {
     await manager.shutdown();
   });
 
-  it("workers can execute read-only tools inside their own context", async () => {
+  it("workers can execute read-only domain tools inside their own context", async () => {
+    fs.mkdirSync(path.join(root, "tickets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "tickets", "T-1001.json"),
+      JSON.stringify({
+        id: "T-1001",
+        subject: "退款：订单 8842 已付款但未收到货",
+        customer: "张伟",
+        channel: "email",
+        createdAt: "2026-09-18T09:12:00+08:00",
+        slaMinutes: 240,
+        status: "open",
+        messages: [
+          { from: "customer", text: "我在 9 月 10 日下单，一直没收到货，要求全额退款。", at: "2026-09-18T09:12:00+08:00" },
+        ],
+      }),
+    );
+
     const manager = new SubAgentManager({
       projectRoot: root,
       model: registry.enableMock(),
       streamFn: registry.streamFn,
-      // Give this worker a real read tool to prove worker tool execution works.
-      workerTools: [(await import("../src/tools/read.js")).createReadTool(root)],
+      // A read-only domain tool proves worker tool execution works end-to-end.
+      workerTools: [createListTicketsTool({ projectRoot: root })],
     });
     mock.setResponses([
-      fauxAssistantMessage([fauxToolCall("read", { path: "note.txt" })]),
-      fauxAssistantMessage("Report: note.txt contains PURPLE-7."),
+      fauxAssistantMessage([fauxToolCall("list_tickets", {})]),
+      // The final turn echoes the real tool result, so the report can only
+      // contain the ticket id if the tool actually ran inside the worker.
+      (context) => fauxAssistantMessage(`Report: ${toolResultText(context)}`),
     ]);
 
-    manager.spawn("reader", "read note.txt and report its contents");
+    manager.spawn("reader", "list the open tickets and report their ids");
     const reports = await manager.wait();
     expect(reports[0]!.status).toBe("completed");
-    expect(reports[0]!.report).toContain("PURPLE-7");
+    expect(reports[0]!.report).toContain("T-1001");
+    expect(reports[0]!.report).toContain("退款");
     await manager.shutdown();
   });
 

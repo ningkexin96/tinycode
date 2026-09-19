@@ -10,7 +10,7 @@ import type { SlashContext } from "../src/tui/slash.js";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  "../fixtures/sample-project",
+  "../fixtures/support-desk",
 );
 
 let context!: SlashContext;
@@ -60,18 +60,20 @@ describe("slash commands", () => {
     expect(text).toContain("/mcp");
   });
 
-  it("/skills lists discovered fixture skills", async () => {
+  it("/skills lists the discovered triage skills", async () => {
     const lines = await executeSlashCommand("/skills", context);
-    expect(lines.join("\n")).toContain("code-review");
+    const text = lines.join("\n");
+    expect(text).toContain("triage-sop");
+    expect(text).toContain("escalation-rules");
   });
 
-  it("/status reports model, tools, permissions and session", async () => {
+  it("/status reports workspace, model, tools, permissions and session", async () => {
     const lines = await executeSlashCommand("/status", context);
     const text = lines.join("\n");
-    expect(text).toContain(`project root : ${projectRoot}`);
+    expect(text).toContain(`工作区       : ${projectRoot}`);
     expect(text).toContain("model        : mock/tinycode-mock");
     expect(text).toContain("permissions  : mode=auto");
-    expect(text).toContain("tools        : read");
+    expect(text).toContain("tools        : list_tickets");
   });
 
   it("/sessions lists the live session and /new starts another", async () => {

@@ -8,7 +8,7 @@ export const VERSION = "1.0.0";
 export function printHelp(): void {
   process.stdout.write(
     `
-TinyCode v${VERSION} — a minimal Coding Agent built on Pi
+TinyCode v${VERSION} — 客服工单分流业务智能体（基于 Pi）
 
 Usage:
   tinycode [options]            interactive TUI session
@@ -31,10 +31,12 @@ Environment:
   TINYCODE_PERMISSION_MODE=ask|auto          default permission mode
   TINYCODE_HOME                              data directory override
 
-Project files:
-  .tinycode/config.json         configuration (model, permissions, MCP servers)
-  .tinycode/skills/*/SKILL.md   skills
-  TINY.md                       project memory
+工作区文件:
+  .tinycode/config.json         配置（模型/权限/队列/MCP）
+  knowledge/                    知识库 SOP（每篇一份 Markdown）
+  tickets/                      工单（每条一个 JSON）
+  .tinycode/skills/*/SKILL.md   技能
+  TINY.md                       工作区业务规则
 `.trimStart(),
   );
 }

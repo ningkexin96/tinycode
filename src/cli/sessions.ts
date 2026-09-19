@@ -8,10 +8,10 @@ import { sessionsDir } from "../config/loader.js";
  *
  * Lifecycle:
  *   tinycode                → new session (always)
- *   tinycode --continue     → newest session whose stored cwd matches
+ *   tinycode --continue     → newest session whose stored workspace (cwd) matches
  *   tinycode --session <id> → that exact session
  *
- * `--continue` never resumes another project's session; when nothing matches
+ * `--continue` never resumes another workspace's session; when nothing matches
  * it falls back to a fresh one with a note instead of failing the launch.
  */
 export type SessionOption = { mode: "new" } | { mode: "attach"; id: string };

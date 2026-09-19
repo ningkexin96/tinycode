@@ -26,7 +26,7 @@ import {
 } from "./transcript.js";
 import { StatusBar } from "./status-bar.js";
 import { showPermissionDialog } from "./permission-dialog.js";
-import { executeSlashCommand, SLASH_COMMAND_NAMES, type SlashContext } from "./slash.js";
+import { executeSlashCommand, SLASH_COMMAND_COMPLETIONS, type SlashContext } from "./slash.js";
 
 export interface TuiAppDeps {
   models: ModelRegistry;
@@ -41,8 +41,8 @@ export interface TuiAppDeps {
 }
 
 const BANNER = [
-  "TinyCode v1.0 — a minimal Coding Agent built on Pi",
-  `${fg.gray("Type a task, or /help for commands. Ctrl+C aborts/exits.")}`,
+  "TinyCode v1.0 — 客服工单分流业务智能体（基于 Pi）",
+  `${fg.gray("输入工单或指令，/help 查看命令。Ctrl+C 中断/退出。")}`,
 ];
 
 /**
@@ -105,10 +105,12 @@ export class TuiApp implements SlashContext {
       );
     }
 
-    // Slash-command autocomplete.
+    // Slash-command autocomplete. pi-tui prepends the "/" itself when a completion
+    // is accepted, so it gets names without the leading slash — otherwise accepting
+    // "/exit" yields "//exit", which the command dispatcher rejects as unknown.
     this.editor.setAutocompleteProvider(
       new CombinedAutocompleteProvider(
-        SLASH_COMMAND_NAMES.map((name) => ({ name: name!, description: "" })),
+        SLASH_COMMAND_COMPLETIONS.map((name) => ({ name, description: "" })),
         this.deps.projectRoot,
         null,
       ),
@@ -183,17 +185,17 @@ export class TuiApp implements SlashContext {
    */
   private showOnboarding(detail: string): void {
     const lines = [
-      fg.brightYellow(bold("⚙  Setup required — currently in MOCK mode")),
-      dim("    Replies come from a scripted offline model, not a real LLM."),
+      fg.brightYellow(bold("⚙ 需要配置 —— 当前为离线 Mock 模式")),
+      dim("    回复来自脚本化的离线模型，不是真实 LLM。"),
       "",
-      "To enable real models:",
-      "  1. Get an API key (openrouter.ai, anthropic.com, platform.openai.com, …)",
-      "  2. Add it to your shell profile, e.g.:",
+      "接入真实模型：",
+      "  1. 获取 API Key（openrouter.ai、anthropic.com、platform.openai.com …）",
+      "  2. 写入 shell 环境变量，例如：",
       '       export OPENROUTER_API_KEY="sk-or-v1-…"',
-      "     Other accepted names: ANTHROPIC_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, …",
-      "  3. Restart tinycode — or run `tinycode --list-models` to verify.",
+      "     其他可用变量名：ANTHROPIC_API_KEY、OPENAI_API_KEY、GROQ_API_KEY …",
+      "  3. 重启 tinycode，或用 `tinycode --list-models` 校验（配置对当前工作区生效）。",
       "",
-      dim("Startup detail:"),
+      dim("启动详情："),
       ...detail.split("\n").map((line) => dim(`  ${line}`)),
     ];
     this.transcript.addInfo(lines.join("\n"));

@@ -20,6 +20,14 @@ export const configSchema = z.object({
   maxOutputTokens: z.number().int().positive().max(200000).optional(),
   /** "ask" shows the permission dialog; "auto" approves everything (tests/CI). */
   permissionMode: z.enum(["ask", "auto"]).optional(),
+  /** Knowledge-base directory (relative to the workspace root). Default "knowledge". */
+  knowledgeDir: z.string().min(1).optional(),
+  /** Ticket directory (relative to the workspace root). Default "tickets". */
+  ticketsDir: z.string().min(1).optional(),
+  /** Business queues the triage agent may route tickets to. */
+  queues: z.array(z.string().min(1)).optional(),
+  /** Max assistant turns allowed per runAgentTurn before the guard stops it. */
+  maxStepsPerTurn: z.number().int().positive().max(200).optional(),
   context: z
     .object({
       /** Soft budget in estimated tokens before auto-compaction kicks in. */

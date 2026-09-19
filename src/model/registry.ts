@@ -50,16 +50,17 @@ export class ModelRegistry {
     if (!this.mock) {
       this.mock = fauxProvider({
         provider: "mock",
-        models: [{ id: "tinycode-mock", name: "TinyCode Mock" }],
+        models: [{ id: "tinycode-mock", name: "TinyCode Mock（离线）" }],
       });
       this.models.setProvider(this.mock.provider);
     }
     // Default reply so one-shot CLI runs (`-p`) produce useful output without
-    // scripting; tests override this via setResponses.
+    // scripting; tests override this via setResponses. The "[TinyCode mock
+    // model]" prefix is asserted by the CLI smoke test, so keep it verbatim.
     this.mock.setResponses([
       fauxAssistantMessage(
-        "[TinyCode mock model] No real provider is configured. Set ANTHROPIC_API_KEY / OPENAI_API_KEY " +
-          "or choose a model in .tinycode/config.json to talk to a real LLM.",
+        "[TinyCode mock model] 尚未配置真实模型服务。设置 ANTHROPIC_API_KEY / OPENAI_API_KEY，" +
+          "或在 .tinycode/config.json 中选择模型，即可接入真实 LLM 处理工单。",
       ),
     ]);
     return this.mock.getModel();

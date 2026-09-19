@@ -1,7 +1,7 @@
 {
   "name": "tinycode",
   "version": "1.0.0",
-  "description": "A minimal but complete Coding Agent Harness — learn how coding agents work by reading one",
+  "description": "基于 Agent Loop 的客服工单分流业务智能体 —— 取单 / 查知识库 / 分类分级 / 分流升级，知识库写入经 Diff 审查与人工审批",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -41,12 +41,15 @@
   "keywords": [
     "ai",
     "agent",
-    "coding-agent",
+    "customer-support",
+    "ticket-triage",
+    "agent-loop",
+    "tool-registry",
+    "function-calling",
     "cli",
     "llm",
     "tui",
-    "mcp",
-    "education"
+    "mcp"
   ],
   "repository": {
     "type": "git",

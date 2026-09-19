@@ -5,9 +5,9 @@ import { fg, bold, selectListTheme } from "./theme.js";
 import { SelectList } from "@earendil-works/pi-tui";
 
 /**
- * Modal permission dialog:
+ * Modal permission dialog (approving a tool/action, not a shell command):
  *
- *   TinyCode wants to run: <title>
+ *   TinyCode 申请执行：<title>
  *   <detail>
  *   › Allow once
  *     Always allow this pattern
@@ -19,7 +19,7 @@ export function showPermissionDialog(
 ): Promise<PromptOutcome> {
   return new Promise<PromptOutcome>((resolve) => {
     const title = new Text(
-      `${bold(fg.brightYellow("Permission"))} ${fg.brightYellow("TinyCode wants to run:")}`,
+      `${bold(fg.brightYellow("Permission"))} ${fg.brightYellow("TinyCode 申请执行：")}`,
     );
     const body = new Text(`  ${request.title}`);
     const detail =

@@ -1,0 +1,7 @@
+{
+  "permissionMode": "ask",
+  "knowledgeDir": "knowledge",
+  "ticketsDir": "tickets",
+  "queues": ["售后组", "物流组", "技术支持"],
+  "maxStepsPerTurn": 12
+}

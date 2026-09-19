@@ -8,16 +8,16 @@ import { statusLabel, type SubAgentManager } from "./manager.js";
  */
 export function createSubAgentTools(manager: SubAgentManager): AgentTool[] {
   const spawnSchema = Type.Object({
-    name: Type.String({ description: "Short unique worker name, e.g. \"frontend-inspector\"" }),
-    task: Type.String({ description: "Precise investigation task for the worker" }),
+    name: Type.String({ description: "简短唯一的调研子智能体名称，例如「退款规则核查」" }),
+    task: Type.String({ description: "交给子智能体的精确取证任务" }),
   });
   const spawn: AgentTool<typeof spawnSchema> = {
     name: "spawn_agent",
     label: "Spawn Agent",
     description:
-      "Spawn a read-only research worker with its own context to investigate a focused task " +
-      "(e.g. inspect one area of the codebase). It can read/search but cannot modify files. " +
-      "Collect its result with wait_agent.",
+      "派生一个只读调研子智能体（独立上下文）去核查一个聚焦子问题，" +
+      "例如「这个工单涉及的退款时效写在知识库哪一篇、原文怎么说」。它只能查询工单与知识库，" +
+      "无法修改任何数据。用 wait_agent 收集它的报告。",
     parameters: spawnSchema,
     execute: async (_toolCallId, params) => {
       const report = manager.spawn(params.name, params.task);
@@ -26,8 +26,8 @@ export function createSubAgentTools(manager: SubAgentManager): AgentTool[] {
           {
             type: "text",
             text:
-              `Worker "${report.name}" started (${report.id}). ` +
-              `Use wait_agent to collect its report. ${manager.statusLine()}`,
+              `子智能体 "${report.name}" 已启动（${report.id}）。` +
+              `用 wait_agent 收集报告。${manager.statusLine()}`,
           },
         ],
         details: report,

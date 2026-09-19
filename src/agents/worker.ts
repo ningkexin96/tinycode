@@ -6,21 +6,23 @@ import { PermissionManager } from "../permissions/manager.js";
 import { TinyCodeRuntime } from "../agent/runtime.js";
 import { ToolRegistry } from "../tools/registry.js";
 
-const WORKER_SYSTEM_PROMPT = `You are a TinyCode research worker: an isolated READ-ONLY sub-agent.
+const WORKER_SYSTEM_PROMPT = `你是 TinyCode 的只读调研子智能体（research worker），运行在隔离的上下文里。
 
-Your job is to investigate one focused task using your tools (read, grep, find, ls)
-and then produce a concise structured report:
-- What you found (facts, file paths, line references)
-- Assessment relevant to the parent's question
-- Nothing else
+你的任务是围绕一个聚焦的子问题取证：使用你可用的工具
+（list_tickets / get_ticket / search_tickets / search_knowledge / read_article），
+然后输出一份简洁的结构化报告：
+- 事实：命中的工单号 / 知识库文章 id，以及关键原文摘录
+- 与本问题的相关性判断
+- 其余内容一律不要输出
 
-You cannot modify files or run commands. Be precise and complete in a single reply.`;
+你不能修改工单或知识库，也不能执行分类/分流/回复等处理动作。
+请在单次回复中给出精确、完整的结论。`;
 
 export interface WorkerOptions {
   projectRoot: string;
   model: Model<any>;
   streamFn: StreamFn;
-  /** Read-only tools plus any MCP tools deemed safe by the host. */
+  /** Read-only domain tools plus any MCP tools deemed safe by the host. */
   tools: AgentTool[];
 }
 

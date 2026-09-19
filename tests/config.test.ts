@@ -39,6 +39,26 @@ describe("config loader", () => {
     expect(config.mcpServers?.example?.command).toBe("node");
   });
 
+  it("parses the ticket-triage domain fields", () => {
+    fs.mkdirSync(path.join(root, ".tinycode"));
+    fs.writeFileSync(
+      path.join(root, ".tinycode", "config.json"),
+      JSON.stringify({
+        permissionMode: "ask",
+        knowledgeDir: "knowledge",
+        ticketsDir: "tickets",
+        queues: ["售后组", "物流组", "技术支持"],
+        maxStepsPerTurn: 12,
+      }),
+    );
+    const { config, warnings } = loadConfig(root);
+    expect(warnings).toEqual([]);
+    expect(config.knowledgeDir).toBe("knowledge");
+    expect(config.ticketsDir).toBe("tickets");
+    expect(config.queues).toEqual(["售后组", "物流组", "技术支持"]);
+    expect(config.maxStepsPerTurn).toBe(12);
+  });
+
   it("reports schema violations as warnings instead of crashing", () => {
     fs.mkdirSync(path.join(root, ".tinycode"));
     fs.writeFileSync(path.join(root, ".tinycode", "config.json"), "{ permissionMode: 'sometimes' }");

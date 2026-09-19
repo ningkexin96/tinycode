@@ -37,7 +37,7 @@ const HELP_LINES = [
   "/agents          show sub-agent status",
   "/compact         summarize older turns to free context",
   "/status          show harness status",
-  "/exit            quit TinyCode",
+  "/exit            退出 TinyCode",
 ];
 
 /** Execute one `/command`; returns transcript lines to display. */
@@ -109,7 +109,7 @@ export async function executeSlashCommand(rawInput: string, ctx: SlashContext): 
     }
     case "/skills": {
       const skills = ctx.skills.list();
-      if (skills.length === 0) return ["No skills found (.tinycode/skills/<name>/SKILL.md)."];
+      if (skills.length === 0) return ["未发现技能（.tinycode/skills/<name>/SKILL.md）。"];
       return [
         `${skills.length} skill(s):`,
         ...skills.map((skill) => `- ${skill.name}: ${skill.description || "(no description)"}`),
@@ -140,7 +140,7 @@ export async function executeSlashCommand(rawInput: string, ctx: SlashContext): 
       const estimated = ctx.runtime.options.contextManager.estimate(agentState.messages);
       const model = agentState.model;
       return [
-        `project root : ${ctx.projectRoot}`,
+        `工作区       : ${ctx.projectRoot}`,
         `model        : ${model.provider}/${model.id}`,
         `context      : ~${estimated} tokens (est.)`,
         `messages     : ${agentState.messages.length}`,
@@ -157,3 +157,13 @@ export async function executeSlashCommand(rawInput: string, ctx: SlashContext): 
 }
 
 export const SLASH_COMMAND_NAMES = HELP_LINES.map((line) => line.split(/\s+/)[0]!);
+
+/**
+ * Command names for pi-tui's autocomplete provider.
+ *
+ * pi-tui inserts the leading "/" itself when a completion is accepted
+ * (`${beforePrefix}/${item.value}` in autocomplete.ts), so handing it the
+ * "/help"-style names defined above would turn "/exit" into "//exit" — which
+ * the dispatcher then rejects as an unknown command. Strip the slash here.
+ */
+export const SLASH_COMMAND_COMPLETIONS = SLASH_COMMAND_NAMES.map((name) => name.replace(/^\//, ""));

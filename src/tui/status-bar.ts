@@ -13,8 +13,9 @@ export interface StatusBarData {
 }
 
 /**
- * Bottom bar: ● state  model  cwd · ctx tokens · SUB-AGENTS n/m RUNNING · session id
- * Rendered as one composed line so long model ids never wrap mid-token.
+ * Bottom bar: ● state  model  工作区 <basename> · ctx tokens · SUB-AGENTS n/m RUNNING · session id
+ * 工作区 shows the workspace basename only (never the full path), so long
+ * paths never wrap mid-token.
  */
 export class StatusBar {
   readonly component = new Text("");
@@ -23,7 +24,7 @@ export class StatusBar {
     const segments: string[] = [];
     const state = data.busy ? fg.brightYellow("● working") : fg.brightGreen("● ready");
     segments.push(state);
-    segments.push(`${bold(data.model)} ${dim(shortCwd(data.cwd))}`);
+    segments.push(`${bold(data.model)} ${dim(`工作区 ${shortCwd(data.cwd)}`)}`);
 
     const limit = data.contextLimit ? ` / ~${formatK(data.contextLimit)}` : "";
     segments.push(fg.gray(`ctx ~${formatK(data.tokens)}${limit}`));

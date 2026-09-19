@@ -1,262 +1,205 @@
-# TinyCode Architecture
+# TinyCode 架构（客服工单分流）
 
-This document explains how TinyCode works: the modules, the data flow, and — most
-importantly — **which capabilities come from Pi and which TinyCode implements itself**.
+本文说明 TinyCode 如何把「客服工单分流」实现成一个可运行的业务智能体：
+模块划分、数据流，以及**哪些能力来自 Pi、哪些由 TinyCode 自己实现**。
 
 ```
-                 TinyCode TUI  (src/tui)
-                      │
-                      ▼
+                     TinyCode TUI  (src/tui)
+                          │
+                          ▼
               TinyCode Runtime  (src/agent/runtime.ts)
-        ┌─────────────┼──────────────┐
-        ▼             ▼              ▼
-     Context      Permission     Session
-   (src/context) (src/perms*)  (src/session)
+              ── runAgentTurn：多轮执行闭环 + 兜底策略 ──
+        ┌─────────────┼──────────────┬──────────────┐
+        ▼             ▼              ▼              ▼
+     ToolRegistry  Permission     Context        Session
+     (src/tools)   (src/perm*)   (src/context)  (src/session)
+        │             │
+        ▼             ▼
+   业务工具 (10)   Diff 审查 + 审批门
         │
         ▼
-   Pi Agent Core  (@earendil-works/pi-agent-core)
-                    │
-          ┌─────────┴──────────┐
-          ▼                    ▼
-       Model               Tools
-  (pi-ai + src/model)  (src/tools registry)
-                              │
-              ┌───────────────┼────────────────┐
-              ▼               ▼                ▼
-          Built-in         MCP            Sub-Agents
-        (7 tools)    (src/mcp)        (src/agents)
-
-* src/permissions
+   Pi Agent Core  (@earendil-works/pi-agent-core)  ← Agent Loop / 流式 / 工具分发
+        │
+   ┌────┴─────┬───────────┬──────────┐
+   ▼          ▼           ▼          ▼
+ 模型        领域层       技能        子智能体 / MCP
+(pi-ai)  (src/domain)  (src/skills)  (src/agents, src/mcp)
 ```
 
-## 1. Agent runtime
+## 1. 领域层（src/domain）
 
-**Pi provides:** the `Agent` class — a stateful wrapper around the low-level agent loop.
-It owns the transcript (`state.messages`), executes tools, emits lifecycle events, and
-supports `abort()` via `AbortController`.
+客服工作区的两类数据：
 
-**TinyCode provides:** `TinyCodeRuntime` (`src/agent/runtime.ts`, ~100 lines) which wires
-the `Agent` to harness policies through four integration points:
+| 数据 | 存储 | 读/写 API |
+|---|---|---|
+| 工单 | `tickets/<id>.json` | `listTickets` / `readTicket` / `writeTicket` / `searchTickets` |
+| 知识库 | `knowledge/<id>.md`（frontmatter + Markdown） | `listArticles` / `readArticle` / `searchArticles` |
 
-| Hook | Policy installed |
+- `src/domain/types.ts` —— `Ticket` / `TicketMessage` / `TicketNote` / `KnowledgeArticle` 类型。
+- `src/domain/tickets.ts` / `knowledge.ts` —— 文件读写 + 过滤 + 全文检索（`search.ts` 提供分词/打分/片断）。
+- 目录名可通过 `.tinycode/config.json` 的 `knowledgeDir` / `ticketsDir` 覆盖；
+  id 统一经 `sanitizeId` 归一化，模型无法用 id 逃逸出目录。
+
+## 2. Agent 运行时与多轮执行闭环（src/agent/runtime.ts）
+
+**Pi 提供：** `Agent` —— 有状态的低层 Agent Loop 包装（拥有 transcript、执行工具、发出生命周期事件、支持 `abort()`）。
+
+**TinyCode 提供：** `TinyCodeRuntime`，把 `Agent` 接到 harness 策略上，并在其之上实现
+`runAgentTurn` —— TUI 与无头模式共用的**多轮执行闭环**：
+
+| 钩子 / 方法 | 策略 |
 |---|---|
-| `streamFn` | `Models.streamSimple` from our model registry (auth-resolved streaming) |
-| `beforeToolCall` | permission gate — can block with a reason shown to the model |
-| `afterToolCall` | tool-result truncation (context hygiene) |
-| `transformContext` | auto-compaction of oversized history before each request |
-| `subscribe` | session persistence of every finalized message |
+| `streamFn` | 模型注册表的 `Models.streamSimple`（含鉴权的流式请求） |
+| `beforeToolCall` | 权限门 —— 可 `block` 并把原因回传给模型 |
+| `afterToolCall` | 工具结果截断（上下文卫生） |
+| `transformContext` | 每次请求前的自动压缩 |
+| `shouldStopAfterTurn` | **最大步数保护**（仅在 `runAgentTurn` 期间生效） |
+| `subscribe` | 会话持久化 + 工具调用计数 |
+| `runAgentTurn(text)` | 返回结构化结果：`completed` / `empty-response` / `max-steps` |
 
-`bootstrap.ts` assembles all of this into a `Harness` object used by both the TUI and
-the one-shot CLI mode.
+三层兜底解决「长工单会话无状态、上下文丢失」：
 
-## 2. Agent loop
+1. **最大步数保护** —— 单轮步数超过 `maxStepsPerTurn` 时中止本轮，避免工具调用失控；
+2. **空响应兜底** —— 本轮没有正文（含只输出思考）时返回结构化结果而非挂起；
+3. **判定落盘 + 会话持久化** —— 分类/分流结果写入工单 JSON，消息写入 JSONL 会话，
+   即使长会话被压缩，判定结论也不会丢。
 
-The loop lives in Pi (`agentLoop`): stream an assistant turn → if it contains tool calls,
-validate arguments against the tool's TypeBox schema → run our hooks → execute tools
-(sequentially or parallel) → append results → repeat until no tool calls remain or the run
-is aborted. A `length` stop reason (token cutoff) fails pending tool calls instead of
-executing truncated arguments.
+`bootstrap.ts` 把以上组装成 `Harness`，TUI 与一次性 CLI 共用。
 
-What TinyCode adds to the loop is policy, not control flow: nothing in TinyCode re-derives
-"when to stop" or "how to parse tool calls".
+## 3. 工具注册中心（ToolDefinition + ToolRegistry）
 
-## 3. Tool registry
+每个工具是一个 Pi `AgentTool`：`{ name, description, label, parameters (TypeBox), execute }`。
 
-Every tool is a Pi `AgentTool`: `{ name, description, label, parameters (TypeBox), execute }`.
-`execute(toolCallId, params, signal, onUpdate)` returns `{ content, details }`:
+- `execute(toolCallId, params, signal, onUpdate)` 返回 `{ content, details }`：
+  `content` 回给模型（文本），`details` 给 UI（计数、diff、状态…）。
+- `ToolRegistry`（`src/tools/registry.ts`）是 name→tool 映射：内置业务工具先注册，
+  MCP 工具与子智能体工具在启动时并入**同一个命名空间**，模型只看到一层统一工具面。
+- **插件式接入**：新增一个工单业务工具 = 写一个工厂函数 + 在 `bootstrap.ts` 注册一行，
+  **无需改动 Agent 主调度循环**。入参 Schema 校验、失败回传纠错都由 Pi 的
+  `validateToolArguments` 与「抛错即 isError 工具结果」机制统一处理。
 
-- `content` goes back to the model (text).
-- `details` is structured data for the UI (exit codes, diff stats, line counts).
+### 业务工具清单
 
-`ToolRegistry` (src/tools/registry.ts) is a name→tool map. Built-ins register first;
-MCP tools and sub-agent tools join the same namespace at startup, so the model sees one
-uniform surface.
-
-### The seven built-ins
-
-| Tool | Notable behavior |
+| 分类 | 工具 |
 |---|---|
-| `read` | numbered lines, `offset`/`limit` windows, binary detection, friendly ENOENT/EISDIR errors |
-| `write` | creates parent dirs, reports `+a -d` against previous content |
-| `edit` | exact-match replace; fails on 0 matches; fails on >1 match unless `replaceAll`; returns unified diff |
-| `bash` | timeout + AbortSignal + SIGKILL escalation, head+tail output capture (100 KB cap) |
-| `grep` | JS regex over text files, `include` glob filter, result cap, skips node_modules/.git/binary |
-| `find` | glob (`**` crosses dirs), sorted relative paths |
-| `ls` | type markers + sizes, dirs first |
+| 查询（放行） | `list_tickets` / `get_ticket` / `search_tickets` / `search_knowledge` / `read_article` |
+| 处理（放行） | `classify_ticket` / `route_ticket` |
+| 需审批 | `escalate_ticket`(L2) / `reply_customer` / `propose_knowledge_edit` |
+| 技能 | `load_skill` |
+| 子智能体 | `spawn_agent` / `list_agents` / `wait_agent` / `close_agent` |
 
-All path-taking tools enforce the project boundary through `resolveWorkspacePath`
-(src/tools/paths.ts) before any I/O: the lexical path is resolved, then **canonicalized with
-`fs.realpathSync` on both sides** (existing target — or nearest existing ancestor for new
-files — versus canonical project root). Symlink escapes (`link -> /etc/hosts`, writing through
-a symlinked directory, broken symlinks) are rejected with a model-friendly
-`Path resolves outside project directory: …` error while ordinary relative paths keep working.
-
-## 4. Tool execution flow
+## 4. 工具执行流程
 
 ```
-model emits toolCall(id, name, args)
-  → schema validation (pi-ai validateToolArguments)
+模型发出 toolCall(id, name, args)
+  → Schema 校验（pi-ai validateToolArguments）
   → Agent.beforeToolCall → PermissionManager.check(name, args)
-        allow → continue
-        ask   → remembered pattern? mode=auto? → allow
-                else prompt callback (TUI dialog / headless deny)
-        deny  → blocked; error toolResult explains why
-  → tool.execute(...)          [abortable]
-  → Agent.afterToolCall → ContextManager truncates oversized content,
-        full output saved as artifact file
-  → ToolResultMessage appended to transcript (+ session file, + UI event)
+        allow → 继续
+        ask   → 命中记忆模式？ mode=auto？ → 放行
+                否则弹审批回调（TUI 对话框 / 无头模式默认拒绝）
+        deny  → 阻塞；错误工具结果说明原因
+  → tool.execute(...)          [可中止]
+  → Agent.afterToolCall → ContextManager 截断超长内容，整段另存 artifact
+  → ToolResultMessage 追加进 transcript（+ 会话文件 + UI 事件）
 ```
 
-Errors thrown inside `execute` become `isError` tool results — the model sees a readable
-sentence ("oldText not found … copy exactly"), never a stack trace. Non-zero bash exit codes
-are *not* errors by design: stdout/stderr carry the payload the model needs.
+`execute` 内抛出的错误会变成 `isError` 工具结果 —— 模型看到的是一句可操作的话
+（如「工单不存在: T-9999（先用 list_tickets 确认工单号）」），而不是堆栈。
 
-## 5. Permission system
+## 5. 权限策略（src/permissions）
 
-Three layers (src/permissions):
+`rules.ts` 是一张「工具 → 判定」规则表，在执行前静态求值：
 
-1. **classifier.ts** — shell commands are split on `&&`/`;`/`|` and classified per segment:
-   `safe` (git status, npm test, cat…), `write` (npm install, mkdir, redirections…),
-   `destructive` (rm -r/-f, git reset --hard, git clean, sudo, pipe-into-shell…).
-   Unknown verbs are treated as `write`.
-2. **rules.ts** — per-tool defaults: reads inside the project → ALLOW; writes anywhere and
-   reads outside → ASK; bash routes through the classifier; unknown tools → ASK.
-3. **manager.ts** — the runtime gate. Order of evaluation:
+| 工具 | 判定 | 理由 |
+|---|---|---|
+| 查询类 + `load_skill` | ALLOW | 只读查询，长会话可自由取证 |
+| `classify_ticket` / `route_ticket` | ALLOW | 常规分流记账，Agent 本职 |
+| `escalate_ticket` level≥2 | ASK | 升级到主管需人工确认 |
+| `escalate_ticket` level=1 | ALLOW | 升级到组长 |
+| `reply_customer` | ASK | 对外动作 |
+| `propose_knowledge_edit`（有改动） | ASK | 知识库写入需人工审批 |
+| `propose_knowledge_edit`（无改动） | ALLOW | **短路跳过**，不占用审批 |
+| 未分类工具（MCP / 子智能体 / 技能） | ASK | 默认求审批 |
 
-```
-hard DENY rule (catastrophic shell: rm -rf /, mkfs, raw disk write, …)
-  → refused unconditionally; auto mode and dialogs can never override it
-ALLOW verdict → run
-ASK verdict   → remembered "always allow" pattern?
-                → mode === "auto"?            approved
-                → prompt callback available?  dialog decides
-                → otherwise                   safe DENY
-```
+`manager.ts` 是运行时闸门：`deny` 直接短路 → `allow` 直接短路 → 记忆的「总是允许」模式
+→ `mode=auto` 自动放行 → 宿主 `prompt` 回调。无回调时安全拒绝。
 
-Semantics differ by surface: the TUI shows the dialog (*Allow once / Always allow this
-pattern / Deny*); headless `-p` has no dialog, so its default is deny-on-ASK and automation
-requires the explicit `--permission-mode auto` opt-in. SIGINT and the Ctrl+C binding share
-the same interrupt logic so ISIG terminals behave identically.
+**强审查**：`propose_knowledge_edit` 被列入 `REVIEW_REQUIRED_TOOLS`，
+即使用户选了「总是允许」也不会被记忆 —— **每次知识库改动都必须重新过一遍人工**。
 
-## 6. Context engineering
-
-`ContextManager` (src/context) owns two policies:
-
-- **Per-result truncation** (`afterToolCall`): text over `maxToolResultChars` keeps head+tail
-  with an explicit `[… N characters truncated …]` marker; the full output is saved under
-  `<dataHome>/sessions/artifacts/`.
-- **Budget & compaction**: token estimate ≈ chars/4 (deterministic, offline). When the
-  transcript exceeds `compactAboveTokens`, `transformContext` replaces older turns with one
-  LLM-generated summary wrapped in `<conversation-summary>` tags. Cut points sit on user-message
-  boundaries so assistant turns never lose their tool results; the newest `keepRecentMessages`
-  are always verbatim. `/compact` runs the same routine on demand.
-  Compaction protects: recent user tasks, recent tool calls/results/errors, recent edits —
-  because those are exactly the last messages kept.
-
-## 7. Session
-
-Every interactive launch owns a session from message one: plain `tinycode` maps to
-`{mode:"new"}`, `--continue` attaches the newest session whose stored cwd matches (never
-another project's; falls back to a new session with a note when none matches), `--session <id>`
-attaches exactly that id. `/new` rotates the id and clears the live transcript — Pi's
-`Agent.reset()` preserves systemPrompt/model/tools/hooks, so tool calling continues seamlessly.
-
-One JSONL file per session in `<dataHome>/sessions/<id>.jsonl` (id = UUIDv7):
-
-```jsonl
-{"type":"session","id":"…","cwd":"…","createdAt":"…","model":"anthropic/claude-sonnet-4","title":"fix tests"}
-{"type":"message","message":{ …user… }}
-{"type":"message","message":{ …assistant… }}
-{"type":"message","message":{ …toolResult… }}
-```
-
-Writes are synchronous appends — files are never truncated after creation (the first real
-prompt adds the title by rewriting the not-yet-valuable header line only). `attach()` is
-strictly read-only: it restores the transcript into the live `Agent` and keeps appending to
-the same file, so a crash during resume cannot destroy history. A torn final line (crash
-mid-append) is skipped on load. Tests redirect storage via `TINYCODE_HOME`.
-
-## 8. Skills
-
-A skill is `.tinycode/skills/<name>/SKILL.md` (plus a user-level mirror in `~/.tinycode/skills`):
-
-```markdown
----
-name: code-review
-description: Review code changes for correctness and maintainability.
----
-# instructions…
-```
-
-Progressive disclosure: the system prompt receives only `name: description` lines. When a
-skill matches the task, the model calls `load_skill(name)` and the full body arrives as a
-normal tool result — costing context tokens only when used.
-
-## 9. MCP
-
-`mcpServers` entries spawn stdio servers via `@modelcontextprotocol/sdk`
-(`StdioClientTransport`). Startup connects all servers in parallel with an initialize
-timeout; a failing server records its status instead of crashing the app. Each server's
-tools are adapted into regular `AgentTool`s (`callTool` under the hood, JSON-Schema passed
-through — pi-ai validates plain JSON Schemas too). Name collisions resolve to `<server>_<tool>`.
-`/mcp` lists status, tool counts and errors; shutdown closes transports cleanly (no child leaks).
-
-## 10. Multi-agent
-
-`SubAgentManager` spawns **read-only workers**: independent Pi `Agent` instances with their
-own transcripts, AbortControllers, a read-only tool subset (read/grep/find/ls, optionally
-safe MCP tools) and a fixed worker system prompt. Hard rules prevent swarms: max 3 concurrent,
-workers never receive sub-agent tools. The root coordinates via
-`spawn_agent` / `list_agents` / `wait_agent` (collects the final assistant message as a
-structured report) / `close_agent` (abort). The status bar surfaces `SUB-AGENTS n/3 RUNNING`.
-
-## 11. TUI
-
-Built from pi-tui components — no hand-rolled ANSI screens:
+## 6. 知识库写入审查 + Diff（src/tools/knowledge.ts）
 
 ```
-TuiAltScreen (alt buffer, differential rendering)
-└── VStack layout root
-    ├── ScrollView(transcriptContainer)   follow:"end", primary
-    └── VStack
-        ├── LoaderHost        "◐ thinking…" / running-tool count
-        ├── Editor            multi-line input, history, slash autocomplete
-        └── StatusBar         ● ready · model cwd · ctx ~Nk · SUB-AGENTS · session
+propose_knowledge_edit(article_id, old_text, new_text, rationale)
+  权限门（见上）：无改动 → 短路跳过；有改动 → ASK
+  审批通过后执行：
+    读原文 → 校验 old_text 唯一命中 → 替换 → lineDiff → renderDiff → 落盘
+    返回统一 Diff（+a -d）与理由给模型核对
 ```
 
-The app subscribes to `AgentEvent`s and maps them onto components:
-`message_update` → live streaming text (finalized into Markdown at `message_end`),
-`tool_execution_start/end` → `● bash npm test` + `✓ exit 0 · 2.4s` lines with diff previews,
-errors → red info lines. Permission asks open a centered overlay dialog (SelectList).
+Diff 由 `src/tools/diff.ts`（LCS 行级 diff + hunk 归并）生成，与 TUI 预览共用。
+审批弹窗会展示「修改理由 + 替换前后文本」，让审批人对着 Diff 决策。
 
-Keybindings: `Enter` submit · `Ctrl+C` abort generation, twice-to-exit when idle ·
-`Esc` abort · `Ctrl+D` quit · arrows scroll/history. One rule learned the hard way:
-**component mutations need explicit `tui.requestRender()`** — input-driven repaints alone
-leave timer-driven updates invisible.
+## 7. Skills 渐进式加载（src/skills）
 
-## 12. Model configuration
+技能 = `.tinycode/skills/<name>/SKILL.md`（frontmatter 带 `name` / `description`）。
 
-`ModelRegistry` wraps pi-ai's `builtinModels()` (every supported provider, auth resolved
-from environment variables). Selection order: CLI `--model provider/id` > `TINYCODE_MODEL` >
-`.tinycode/config.json` > first auth-configured provider. `TINYCODE_MODEL=mock` registers
-pi's scripted `fauxProvider` so the entire loop — including tests and `-p` smoke runs —
-works with zero network. Missing credentials produce actionable guidance, not crashes.
+- `SkillRegistry.summary()` 只把 `name: description` 注入系统提示；
+- 模型判断技能相关时调用 `load_skill(name)`，完整 SOP 正文作为普通工具结果返回；
+- 于是**只有被用到的业务规则才消耗上下文 token**，从机制上缓解「全量规则撑爆上下文」。
 
----
+示例技能：`triage-sop`、`escalation-rules`。
 
-## What comes from where (summary)
+## 8. 上下文工程（src/context）
 
-| Capability | Source |
+`ContextManager` 拥有两条策略：
+
+- **单条结果截断**（`afterToolCall`）：超过 `maxToolResultChars` 的文本保留头尾并插入
+  `[… N characters truncated …]`，完整输出存到 `<dataHome>/sessions/artifacts/`。
+- **预算与压缩**：token 估算 ≈ 字符数/4（确定性、离线）。超过 `compactAboveTokens` 时，
+  `transformContext` 用一段 LLM 摘要替换较早轮次并包在 `<conversation-summary>` 标签里；
+  切割点落在用户消息边界，最新的 `keepRecentMessages` 条始终原样保留。`/compact` 手动触发同一流程。
+
+## 9. 会话（src/session）
+
+每次交互启动都拥有一个会话：`tinycode` → `{mode:"new"}`，`--continue` 附加**当前目录**
+最近的会话，`--session <id>` 精确附加。`/new` 轮换 id 并清空实时 transcript
+（Pi 的 `Agent.reset()` 保留 systemPrompt/model/tools/hooks）。
+
+每个会话一个 JSONL 文件（`<dataHome>/sessions/<id>.jsonl`），同步追加、只增不改。
+测试通过 `TINYCODE_HOME` 重定向存储。
+
+## 10. 子智能体与 MCP
+
+- **子智能体**（`src/agents`）：最多 3 个**只读** worker，独立 transcript 与 AbortController，
+  只读工具子集（查询类工单/知识工具）。根智能体通过 `spawn_agent` / `wait_agent` /
+  `list_agents` / `close_agent` 协调，用子上下文核查「某政策原文到底怎么说」而不污染主上下文。
+- **MCP**（`src/mcp`）：`mcpServers` 声明的 stdio 服务器在启动时并行连接，其工具适配为普通
+  `AgentTool` 并入同一注册表；单个服务器故障只记录状态，不会拖垮应用。
+
+## 11. TUI 与 CLI（src/tui, src/cli）
+
+TUI 由 pi-tui 组件拼装：`ScrollView(transcript)` + `LoaderHost` + `Editor` + `StatusBar`，
+权限审批是居中覆盖对话框。工具调用行由 `tool-view.ts` 渲染
+（如 `● classify_ticket T-1001` → `✓ 退款 · P1 → triaged`；知识库写入展示 `+a -d` 与 diff 预览）。
+
+斜杠命令：`/help /new /clear /resume /sessions /model /skills /mcp /agents /compact /status /exit`。
+
+## 12. What comes from where
+
+| 能力 | 来源 |
 |---|---|
-| Agent loop, tool dispatch, streaming events, abort | Pi agent-core |
-| Provider catalog, env-var auth, request streaming, schema validation | Pi ai |
-| Terminal renderer, editor, scroll view, overlays, select lists | Pi tui |
-| All 7 coding tools, registry | TinyCode |
-| Permission classifier/rules/gate/dialog | TinyCode |
-| JSONL sessions, resume, titles | TinyCode |
-| Truncation, budgeting, compaction | TinyCode |
-| System prompt, TINY.md memory | TinyCode |
-| Skill discovery/loading, progressive disclosure | TinyCode |
-| MCP client lifecycle + adapter | TinyCode (on official MCP SDK) |
-| Sub-agent supervision | TinyCode |
-| TUI composition, slash commands, CLI, config | TinyCode |
+| Agent Loop、工具分发、流式事件、abort | Pi agent-core |
+| 提供商目录、环境变量鉴权、流式请求、Schema 校验 | Pi ai |
+| 终端渲染、编辑器、滚动视图、覆盖层 | Pi tui |
+| 工单/知识库领域模型与读写 | TinyCode |
+| 10 个业务工具 + 注册中心 | TinyCode |
+| runAgentTurn 多轮闭环 + 兜底策略 | TinyCode |
+| 权限规则/审批门 + 知识库写入审查 | TinyCode |
+| JSONL 会话、恢复、标题 | TinyCode |
+| 截断、预算、压缩 | TinyCode |
+| 系统提示、TINY.md 业务规则 | TinyCode |
+| 技能发现/加载、渐进式披露 | TinyCode |
+| MCP 生命周期 + 适配 | TinyCode（基于官方 MCP SDK） |
+| 子智能体调度 | TinyCode |
+| TUI 组装、斜杠命令、CLI、配置 | TinyCode |

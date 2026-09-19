@@ -29,7 +29,7 @@ async function main(): Promise<number> {
 
   const cwd = process.cwd();
   if (!fs.existsSync(cwd)) {
-    process.stderr.write(`tinycode: working directory does not exist: ${cwd}\n`);
+    process.stderr.write(`tinycode: 工作区目录不存在：${cwd}\n`);
     return 2;
   }
 

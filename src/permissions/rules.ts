@@ -1,9 +1,14 @@
-import os from "node:os";
-import path from "node:path";
-import { classifyCommand } from "./classifier.js";
-
 /**
- * Static decision rules evaluated BEFORE any user interaction.
+ * Static permission rules for the customer-support domain.
+ *
+ * The gate runs BEFORE a tool executes, so these verdicts decide whether a call
+ * proceeds freely, needs human approval, or is refused. The core policy for a
+ * ticket-triage agent:
+ *
+ * - 只读查询（查工单/查知识库）→ 放行，保证长会话可自由取证；
+ * - 常规分流记账（分类/路由）→ 放行，这是 Agent 的本职工作；
+ * - 对客回复、升级到主管、**知识库写入** → ASK，必须人工审批；
+ * - 知识库改动为空（old_text === new_text）→ 短路跳过，不占用审批。
  */
 
 export type PermissionAction = "allow" | "ask" | "deny";
@@ -19,92 +24,59 @@ export interface RuleVerdict {
   reason: string;
 }
 
-/**
- * Resolve a tool input path against the project root.
- * Returns an absolute path plus whether it stays inside the project.
- */
-export function resolveToolPath(
-  projectRoot: string,
-  raw: string | undefined,
-): { absolute: string; insideProject: boolean } {
-  if (!raw || raw.length === 0) {
-    return { absolute: projectRoot, insideProject: true };
-  }
-  const expanded = raw === "~" ? os.homedir() : raw.startsWith("~/") ? path.join(os.homedir(), raw.slice(2)) : raw;
-  const absolute = path.isAbsolute(expanded)
-    ? path.normalize(expanded)
-    : path.resolve(projectRoot, expanded);
-  const relative = path.relative(projectRoot, absolute);
-  const insideProject = relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
-  return { absolute, insideProject };
+/** Tools that only read workspace data — safe to run unattended. */
+const READ_ONLY_TOOLS = new Set([
+  "list_tickets",
+  "get_ticket",
+  "search_tickets",
+  "search_knowledge",
+  "read_article",
+  "load_skill",
+]);
+
+/** Routine triage bookkeeping — the agent's own job, no approval needed. */
+const TRIAGE_TOOLS = new Set(["classify_ticket", "route_ticket"]);
+
+/** Tools whose approval must not be turned into a remembered "always allow". */
+export const REVIEW_REQUIRED_TOOLS = new Set(["propose_knowledge_edit"]);
+
+/** A knowledge edit that changes nothing is short-circuited (no review). */
+export function isNoopKnowledgeEdit(input: Record<string, unknown>): boolean {
+  return (
+    typeof input.old_text === "string" &&
+    typeof input.new_text === "string" &&
+    input.old_text === input.new_text
+  );
 }
 
-const READ_ONLY_TOOLS = new Set(["read", "grep", "find", "ls"]);
-
-/**
- * Hard DENY for catastrophic shell commands. These are refused outright —
- * auto mode, remembered patterns, and user approval never override them.
- * Deliberately tiny: only commands whose damage is unrecoverable.
- */
-const HARD_DENY_BASH: Array<{ label: string; test: RegExp }> = [
-  { label: "recursive force-delete of filesystem root", test: /\brm\s+[^\n]*\s\/\*?\s*(?:&&|$|;)/ },
-  { label: "delete home directory", test: /\brm\s+[^\n]*\s(~|\$HOME)(?:\s|$)/ },
-  { label: "format filesystem", test: /\bmkfs(\.\w+)?\b/ },
-  { label: "raw disk write", test: /\bdd\b[^\n]*\bof=\/dev\/(disk|sd|nvme|mmcblk)/ },
-  { label: "world-writable root", test: /\bchmod\s+-R\s+777\s+\// },
-];
-
-export function findHardDeny(command: string): string | undefined {
-  for (const rule of HARD_DENY_BASH) {
-    if (rule.test.test(command)) return rule.label;
-  }
-  return undefined;
-}
-
-export function evaluateRules({
-  toolName,
-  input,
-  projectRoot,
-}: PermissionRuleInput): RuleVerdict {
+export function evaluateRules({ toolName, input }: PermissionRuleInput): RuleVerdict {
   if (READ_ONLY_TOOLS.has(toolName)) {
-    const target = typeof input.path === "string" ? input.path : ".";
-    const { insideProject } = resolveToolPath(projectRoot, target);
-    if (insideProject) return { action: "allow", reason: "read-only inside project" };
-    return { action: "ask", reason: `access outside project: ${target}` };
+    return { action: "allow", reason: "只读查询" };
   }
 
-  if (toolName === "write" || toolName === "edit") {
-    const { insideProject } = resolveToolPath(projectRoot, String(input.path ?? ""));
-    if (!insideProject) {
-      return { action: "ask", reason: `write outside project: ${input.path}` };
-    }
-    return { action: "ask", reason: `${toolName} modifies project files` };
+  if (TRIAGE_TOOLS.has(toolName)) {
+    return { action: "allow", reason: "常规分流操作（分类/路由）" };
   }
 
-  if (toolName === "bash") {
-    const command = String(input.command ?? "");
-    const denied = findHardDeny(command);
-    if (denied) {
-      return { action: "deny", reason: `catastrophic command refused: ${denied}` };
+  if (toolName === "escalate_ticket") {
+    const level = Number(input.level ?? 1);
+    if (level >= 2) {
+      return { action: "ask", reason: "升级到主管（L2）需人工确认" };
     }
-    const { insideProject } = resolveToolPath(
-      projectRoot,
-      typeof input.cwd === "string" ? input.cwd : undefined,
-    );
-    if (!insideProject) {
-      return { action: "ask", reason: `working directory outside project: ${String(input.cwd)}` };
+    return { action: "allow", reason: "升级到组长（L1）" };
+  }
+
+  if (toolName === "reply_customer") {
+    return { action: "ask", reason: "对客回复属对外动作，需人工审批" };
+  }
+
+  if (toolName === "propose_knowledge_edit") {
+    if (isNoopKnowledgeEdit(input)) {
+      return { action: "allow", reason: "知识库改动为空，短路跳过" };
     }
-    const classification = classifyCommand(command);
-    switch (classification.risk) {
-      case "safe":
-        return { action: "allow", reason: classification.reasons[0] ?? "known read-only command" };
-      case "write":
-        return { action: "ask", reason: classification.reasons.join(", ") || "mutating command" };
-      case "destructive":
-        return { action: "ask", reason: `dangerous: ${classification.reasons.join(", ")}` };
-    }
+    return { action: "ask", reason: "知识库写入需人工审批（Diff 审查）" };
   }
 
   // Tools registered later (MCP, sub-agents, skills) default to asking.
-  return { action: "ask", reason: `unclassified tool "${toolName}"` };
+  return { action: "ask", reason: `未分类工具 "${toolName}"` };
 }

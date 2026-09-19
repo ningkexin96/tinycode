@@ -1,4 +1,4 @@
-import { evaluateRules } from "./rules.js";
+import { evaluateRules, REVIEW_REQUIRED_TOOLS } from "./rules.js";
 
 /**
  * The permission layer every tool execution passes through.
@@ -111,9 +111,10 @@ export class PermissionManager {
       return { action: "deny", reason: `permission prompt failed: ${(error as Error).message}` };
     }
     if (outcome === "always") {
-      // Remember the command family ("npm install"), not one exact invocation,
-      // so similar future requests skip the dialog.
-      this.rememberAlways(toolName, derivePatternPrefix(toolName, title));
+      // 知识库写入等强审查工具不记忆“总是允许”，保证每次改动都经人工审核。
+      if (!REVIEW_REQUIRED_TOOLS.has(toolName)) {
+        this.rememberAlways(toolName, derivePatternPrefix(toolName, title));
+      }
       return { action: "allow", reason: "allowed always (remembered)" };
     }
     if (outcome === "once") {
@@ -124,34 +125,26 @@ export class PermissionManager {
 }
 
 function renderTitle(toolName: string, input: Record<string, unknown>): string {
-  switch (toolName) {
-    case "bash":
-      return String(input.command ?? "");
-    case "read":
-    case "write":
-    case "edit":
-    case "grep":
-    case "find":
-    case "ls":
-      return `${toolName} ${String(input.path ?? "")}`.trim();
-    default:
-      return `${toolName} ${JSON.stringify(input)}`;
+  if (toolName === "propose_knowledge_edit") {
+    return `知识库修改 ${String(input.article_id ?? "")}`.trim();
   }
+  if (typeof input.ticket_id === "string") return `${toolName} ${input.ticket_id}`;
+  if (typeof input.article_id === "string") return `${toolName} ${input.article_id}`;
+  return `${toolName} ${JSON.stringify(input)}`;
 }
 
 /** Reduce a request to its approval family: first two words for bash, else the tool name + head token. */
-function derivePatternPrefix(toolName: string, title: string): string {
-  const words = title.trim().split(/\s+/);
-  if (toolName === "bash") return words.slice(0, 2).join(" ");
-  return `${toolName} ${words[1] ?? ""}`.trim();
+function derivePatternPrefix(_toolName: string, title: string): string {
+  return title.trim().toLowerCase();
 }
 
 function renderDetail(input: Record<string, unknown>): string | undefined {
-  if (typeof input.oldText === "string" && typeof input.newText === "string") {
-    return `replace:\n${clip(input.oldText)}\nwith:\n${clip(input.newText)}`;
+  if (typeof input.old_text === "string" && typeof input.new_text === "string") {
+    const rationale = typeof input.rationale === "string" ? `理由: ${input.rationale}\n\n` : "";
+    return `${rationale}替换:\n${clip(input.old_text)}\n\n为:\n${clip(input.new_text)}`;
   }
-  if (typeof input.content === "string") {
-    return clip(input.content);
+  if (typeof input.message === "string") {
+    return clip(input.message);
   }
   return undefined;
 }

@@ -13,14 +13,18 @@ import { SessionManager } from "./session/manager.js";
 import { PermissionManager } from "./permissions/manager.js";
 import { SkillRegistry, createLoadSkillTool } from "./skills/registry.js";
 import {
-  createBashTool,
-  createEditTool,
-  createFindTool,
-  createGrepTool,
-  createLsTool,
-  createReadTool,
-  createWriteTool,
+  createClassifyTicketTool,
+  createEscalateTicketTool,
+  createGetTicketTool,
+  createListTicketsTool,
+  createProposeKnowledgeEditTool,
+  createReadArticleTool,
+  createReplyCustomerTool,
+  createRouteTicketTool,
+  createSearchKnowledgeTool,
+  createSearchTicketsTool,
 } from "./tools/index.js";
+import type { DomainToolContext } from "./tools/context.js";
 import { ToolRegistry } from "./tools/registry.js";
 import type { McpServerConfig, TinyCodeConfig } from "./config/schema.js";
 import { McpManager } from "./mcp/manager.js";
@@ -29,9 +33,9 @@ import { ModelRegistry, type ModelRef } from "./model/registry.js";
 import { sessionsDir } from "./config/loader.js";
 
 const COMPACTION_SYSTEM_PROMPT =
-  "You summarize coding-agent conversations. Produce a dense handoff note: the user's goal, " +
-  "what was tried, files modified (with paths), current state, test/build results, and exact next steps. " +
-  "Keep code identifiers verbatim. No prose padding.";
+  "你在为「客服工单分流」智能体压缩长会话。产出一份密度高的交接摘要：客户问题与诉求、" +
+  "已完成的分流判定（分类 / 优先级 / 意图）、查过的知识库条目、工单当前状态、以及待办的下一步。" +
+  "保留工单号与知识库文章 id 等标识符原文，不要冗余叙述。";
 
 /**
  * bootstrapHarness assembles the whole product around the Pi Agent loop:
@@ -112,27 +116,36 @@ export async function bootstrapHarness(options: BootstrapOptions): Promise<Harne
     }
   }
 
-  // Tools
+  // Domain tools — the ticket / knowledge-base surface of a triage agent.
+  const domain: DomainToolContext = {
+    projectRoot,
+    knowledgeDir: config.knowledgeDir,
+    ticketsDir: config.ticketsDir,
+  };
   const tools = new ToolRegistry();
   for (const factory of [
-    createReadTool,
-    createWriteTool,
-    createEditTool,
-    createBashTool,
-    createGrepTool,
-    createFindTool,
-    createLsTool,
-  ] as ((root: string) => AgentTool)[]) {
-    tools.register(factory(projectRoot));
+    createListTicketsTool,
+    createGetTicketTool,
+    createSearchTicketsTool,
+    createClassifyTicketTool,
+    createRouteTicketTool,
+    createEscalateTicketTool,
+    createReplyCustomerTool,
+    createSearchKnowledgeTool,
+    createReadArticleTool,
+    createProposeKnowledgeEditTool,
+  ] as ((ctx: DomainToolContext) => AgentTool)[]) {
+    tools.register(factory(domain));
   }
   tools.register(createLoadSkillTool(skills));
 
-  // Sub-agents (workers are read-only)
+  // Sub-agents (workers are read-only: they may only query tickets / knowledge)
   const workerTools: AgentTool[] = [
-    createReadTool(projectRoot),
-    createGrepTool(projectRoot),
-    createFindTool(projectRoot),
-    createLsTool(projectRoot),
+    createListTicketsTool(domain),
+    createGetTicketTool(domain),
+    createSearchTicketsTool(domain),
+    createSearchKnowledgeTool(domain),
+    createReadArticleTool(domain),
   ];
   const subAgents = new SubAgentManager({
     projectRoot,
@@ -152,13 +165,16 @@ export async function bootstrapHarness(options: BootstrapOptions): Promise<Harne
     registerMcpTools(tools, mcp);
   }
 
-  // System prompt with project memory (TINY.md, compatible fallbacks)
+  // System prompt with workspace memory (TINY.md, compatible fallbacks)
   const memory = readProjectMemory(projectRoot);
   const systemPrompt = buildSystemPrompt({
     projectRoot,
     platform: `${os.platform()} ${os.arch()} · node ${process.version}`,
     memory,
     skills: skills.summary(),
+    queues: config.queues,
+    knowledgeDir: config.knowledgeDir,
+    ticketsDir: config.ticketsDir,
   });
 
   const summarize = makeDefaultSummarizer(models, model);
@@ -173,6 +189,7 @@ export async function bootstrapHarness(options: BootstrapOptions): Promise<Harne
     contextManager,
     summarize,
     session,
+    maxStepsPerTurn: config.maxStepsPerTurn,
   });
 
   // Resume an attached session into the live transcript.
@@ -203,7 +220,7 @@ export async function bootstrapHarness(options: BootstrapOptions): Promise<Harne
   };
 }
 
-/** Project memory: TINY.md is the standard; AGENTS.md/CLAUDE.md are compatible extras. */
+/** Workspace memory: TINY.md is the standard; AGENTS.md/CLAUDE.md are compatible extras. */
 function readProjectMemory(projectRoot: string): string | undefined {
   const parts: string[] = [];
   for (const name of ["TINY.md", "AGENTS.md", "CLAUDE.md"]) {
